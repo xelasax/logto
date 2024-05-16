@@ -1,7 +1,8 @@
 import type { BindMfa, CreateUser, MfaVerification, Scope, User } from '@logto/schemas';
 import { MfaFactor, RoleType, Users, UsersPasswordEncryptionMethod } from '@logto/schemas';
-import { generateStandardId, generateStandardShortId } from '@logto/shared';
-import { deduplicateByKey, type Nullable } from '@silverhand/essentials';
+import { generateStandardShortId, generateStandardId } from '@logto/shared';
+import type { Nullable } from '@silverhand/essentials';
+import { deduplicateByKey, conditional } from '@silverhand/essentials';
 import { argon2Verify, bcryptVerify, md5, sha1, sha256 } from 'hash-wasm';
 import pRetry from 'p-retry';
 
@@ -14,6 +15,7 @@ import type Queries from '#src/tenants/Queries.js';
 import assertThat from '#src/utils/assert-that.js';
 import { encryptPassword } from '#src/utils/password.js';
 import type { OmitAutoSetFields } from '#src/utils/sql.js';
+import { getValidPhoneNumber } from '#src/utils/user.js';
 
 export const encryptUserPassword = async (
   password: string
@@ -90,7 +92,7 @@ export const createUserLibrary = (queries: Queries) => {
       hasUserWithId,
       hasUserWithPhone,
       findUsersByIds,
-      updateUserById,
+      updateUserById: updateUserByIdQuery,
       findUserById,
     },
     usersRoles: { findUsersRolesByRoleId, findUsersRolesByUserId },
@@ -115,6 +117,24 @@ export const createUserLibrary = (queries: Queries) => {
       { retries, factor: 0 } // No need for exponential backoff
     );
 
+  const updateUserById = async (
+    id: string,
+    set: Partial<OmitAutoSetFields<CreateUser>>,
+    jsonbMode?: 'replace' | 'merge'
+  ) => {
+    const validPhoneNumber = conditional(
+      'primaryPhone' in set &&
+        typeof set.primaryPhone === 'string' &&
+        getValidPhoneNumber(set.primaryPhone)
+    );
+
+    return updateUserByIdQuery(
+      id,
+      { ...set, ...conditional(validPhoneNumber && { primaryPhone: validPhoneNumber }) },
+      jsonbMode
+    );
+  };
+
   const insertUser = async (
     data: OmitAutoSetFields<CreateUser>,
     additionalRoleNames: string[]
@@ -127,12 +147,21 @@ export const createUserLibrary = (queries: Queries) => {
 
     assertThat(parameterRoles.length === roleNames.length, 'role.default_role_missing');
 
+    const validPhoneNumber = conditional(
+      'primaryPhone' in data &&
+        typeof data.primaryPhone === 'string' &&
+        getValidPhoneNumber(data.primaryPhone)
+    );
+
     return pool.transaction(async (connection) => {
       const insertUserQuery = buildInsertIntoWithPool(connection)(Users, {
         returning: true,
       });
 
-      const user = await insertUserQuery(data);
+      const user = await insertUserQuery({
+        ...data,
+        ...conditional(validPhoneNumber && { primaryPhone: validPhoneNumber }),
+      });
       const roles = deduplicateByKey([...parameterRoles, ...defaultRoles], 'id');
 
       if (roles.length > 0) {
@@ -336,5 +365,6 @@ export const createUserLibrary = (queries: Queries) => {
     verifyUserPassword,
     signOutUser,
     findUserSsoIdentities,
+    updateUserById,
   };
 };
