@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import type { BindMfa, CreateUser, MfaVerification, Scope, User } from '@logto/schemas';
 import { MfaFactor, RoleType, Users, UsersPasswordEncryptionMethod } from '@logto/schemas';
 import { generateStandardShortId, generateStandardId } from '@logto/shared';
@@ -123,14 +124,19 @@ export const createUserLibrary = (queries: Queries) => {
     jsonbMode?: 'replace' | 'merge'
   ) => {
     const validPhoneNumber = conditional(
-      'primaryPhone' in set &&
-        typeof set.primaryPhone === 'string' &&
-        getValidPhoneNumber(set.primaryPhone)
+      typeof set.primaryPhone === 'string' && getValidPhoneNumber(set.primaryPhone)
     );
 
     return updateUserByIdQuery(
       id,
-      { ...set, ...conditional(validPhoneNumber && { primaryPhone: validPhoneNumber }) },
+      {
+        ...set,
+        ...conditional(
+          validPhoneNumber && {
+            primaryPhone: validPhoneNumber,
+          }
+        ),
+      },
       jsonbMode
     );
   };
@@ -148,9 +154,7 @@ export const createUserLibrary = (queries: Queries) => {
     assertThat(parameterRoles.length === roleNames.length, 'role.default_role_missing');
 
     const validPhoneNumber = conditional(
-      'primaryPhone' in data &&
-        typeof data.primaryPhone === 'string' &&
-        getValidPhoneNumber(data.primaryPhone)
+      typeof data.primaryPhone === 'string' && getValidPhoneNumber(data.primaryPhone)
     );
 
     return pool.transaction(async (connection) => {
@@ -368,3 +372,4 @@ export const createUserLibrary = (queries: Queries) => {
     updateUserById,
   };
 };
+/* eslint-enable max-lines */
