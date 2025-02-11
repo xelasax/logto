@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import http2 from 'node:http2';
+import http2 from 'node:https';
 import path from 'node:path';
 
 import { appInsights } from '@logto/app-insights/node';
@@ -91,8 +91,8 @@ export default async function initApp(app: Koa): Promise<void> {
 
   if (isHttpsEnabled && httpsCert && httpsKey) {
     const createHttp2Server = async () =>
-      http2.createSecureServer(
-        { cert: await fs.readFile(httpsCert), key: await fs.readFile(httpsKey), allowHTTP1: true },
+      http2.createServer(
+        { cert: await fs.readFile(httpsCert), key: await fs.readFile(httpsKey) },
         app.callback()
       );
 
