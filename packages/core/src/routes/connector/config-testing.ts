@@ -33,6 +33,7 @@ export default function connectorConfigTestingRoutes<T extends ManagementApiRout
         phone: string().regex(phoneRegEx).optional(),
         email: string().regex(emailRegEx).optional(),
         config: jsonObjectGuard,
+        locale: string().optional(),
       }),
       status: [204, 400, 404],
     }),
@@ -41,7 +42,7 @@ export default function connectorConfigTestingRoutes<T extends ManagementApiRout
         params: { factoryId },
         body,
       } = ctx.guard;
-      const { phone, email, config } = body;
+      const { phone, email, config, locale } = body;
 
       const subject = phone ?? email;
       assertThat(subject, new RequestError({ code: 'guard.invalid_input' }));
@@ -83,6 +84,7 @@ export default function connectorConfigTestingRoutes<T extends ManagementApiRout
           to: subject,
           type: TemplateType.Generic,
           payload: {
+            locale,
             code: '000000',
           },
         },

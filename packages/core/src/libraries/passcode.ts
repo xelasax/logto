@@ -54,7 +54,13 @@ export const createPasscodeLibrary = (queries: Queries, connectorLibrary: Connec
     });
   };
 
-  const sendPasscode = async (passcode: Passcode) => {
+  /**
+   *
+   * @param {Passcode} passcode The passcode object being sent.
+   * @param locale The language tag detected from the user's request.
+   * If provided, it will be used to localize the message.
+   */
+  const sendPasscode = async (passcode: Passcode, locale?: string) => {
     const emailOrPhone = passcode.email ?? passcode.phone;
 
     if (!emailOrPhone) {
@@ -76,6 +82,7 @@ export const createPasscodeLibrary = (queries: Queries, connectorLibrary: Connec
       type: messageTypeResult.data,
       payload: {
         code: passcode.code,
+        locale,
       },
     });
 
