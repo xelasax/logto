@@ -84,8 +84,8 @@ export default function connectorConfigTestingRoutes<T extends ManagementApiRout
           to: subject,
           type: TemplateType.Generic,
           payload: {
-            locale,
             code: '000000',
+            ...conditional(locale && { locale }),
           },
         },
         config
