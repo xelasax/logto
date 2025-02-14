@@ -92,13 +92,13 @@ export type EmailServiceBranding = z.infer<typeof emailServiceBrandingGuard>;
 
 export type SendMessageData = {
   to: string;
-  type: TemplateType | VerificationCodeType;
+  type: TemplateType;
   payload: SendMessagePayload;
 };
 
 export const sendMessageDataGuard = z.object({
   to: z.string(),
-  type: templateTypeGuard.or(verificationCodeTypeGuard),
+  type: templateTypeGuard,
   payload: sendMessagePayloadGuard,
 }) satisfies z.ZodType<SendMessageData>;
 

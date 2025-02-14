@@ -21,9 +21,10 @@ import { loadConnectorFactories } from '#src/utils/connectors/index.js';
 import type { ManagementApiRouter, RouterInitArgs } from '../types.js';
 
 export default function connectorConfigTestingRoutes<T extends ManagementApiRouter>(
-  ...[router, { cloudConnection }]: RouterInitArgs<T>
+  ...[router, { cloudConnection, connectors }]: RouterInitArgs<T>
 ) {
   const { getClient } = cloudConnection;
+  const { getI18nEmailTemplate } = connectors;
 
   router.post(
     '/connectors/:factoryId/test',
@@ -76,7 +77,8 @@ export default function connectorConfigTestingRoutes<T extends ManagementApiRout
       } = await buildRawConnector<typeof CloudRouter, SmsConnector | EmailConnector>(
         connectorFactory,
         notImplemented,
-        conditional(ServiceConnector.Email === connectorFactory.metadata.id && getClient)
+        conditional(ServiceConnector.Email === connectorFactory.metadata.id && getClient),
+        conditional(connectorFactory.type === ConnectorType.Email && getI18nEmailTemplate)
       );
 
       await sendMessage(
