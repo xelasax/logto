@@ -24,6 +24,8 @@ const application_details = {
   description_placeholder: 'Введите описание своего приложения',
   config_endpoint: 'Конечная точка конфигурации OpenID Provider',
   issuer_endpoint: 'Конечная точка издателя',
+  /** UNTRANSLATED */
+  jwks_uri: 'JWKS URI',
   authorization_endpoint: 'Конечная точка авторизации',
   authorization_endpoint_tip:
     'Конечная точка для аутентификации и авторизации. Он используется для аутентификации <a>OpenID Connect</a>.',
@@ -96,6 +98,9 @@ const application_details = {
   protect_origin_server: 'Защита вашего исходного сервера',
   protect_origin_server_description:
     'Обеспечьте защиту вашего исходного сервера от прямого доступа. Обратитесь к руководству для получения более <a>подробных инструкций</a>.',
+  /** UNTRANSLATED */
+  third_party_settings_description:
+    'Integrate third-party applications with Logto as your Identity Provider (IdP) using OIDC / OAuth 2.0, featuring a consent screen for user authorization.',
   session_duration: 'Продолжительность сеанса (дни)',
   try_it: 'Попробуйте',
   no_organization_placeholder: 'Организация не найдена. <a>Перейти к организациям</a>',

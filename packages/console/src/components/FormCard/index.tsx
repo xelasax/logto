@@ -2,8 +2,9 @@ import type { AdminConsoleKey } from '@logto/phrases';
 import type { ReactNode } from 'react';
 
 import DynamicT from '@/ds-components/DynamicT';
-import TextLink from '@/ds-components/TextLink';
 import type { Props as TextLinkProps } from '@/ds-components/TextLink';
+
+import LearnMore from '../LearnMore';
 
 import FormCardLayout from './FormCardLayout';
 import styles from './index.module.scss';
@@ -15,6 +16,7 @@ export type Props = {
   readonly descriptionInterpolation?: Record<string, unknown>;
   readonly learnMoreLink?: Pick<TextLinkProps, 'href' | 'targetBlank'> & {
     linkText?: AdminConsoleKey;
+    isRelativeDocUrl?: boolean;
   };
   readonly children: ReactNode;
 };
@@ -39,12 +41,12 @@ function FormCard({
             <div className={styles.description}>
               <DynamicT forKey={description} interpolation={descriptionInterpolation} />
               {learnMoreLink?.href && (
-                <>
-                  {' '}
-                  <TextLink href={learnMoreLink.href} targetBlank={learnMoreLink.targetBlank}>
-                    <DynamicT forKey={learnMoreLink.linkText ?? 'general.learn_more'} />
-                  </TextLink>
-                </>
+                <LearnMore
+                  href={learnMoreLink.href}
+                  targetBlank={learnMoreLink.targetBlank}
+                  customI18nKey={learnMoreLink.linkText}
+                  isRelativeDocUrl={learnMoreLink.isRelativeDocUrl}
+                />
               )}
             </div>
           )}

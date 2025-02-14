@@ -5,6 +5,9 @@ const connector_details = {
   settings: 'الإعدادات العامة',
   settings_description:
     'تلعب الموصلات دورًا حاسمًا في Logto. بمساعدتها ، يتيح Logto للمستخدمين النهائيين استخدام التسجيل أو تسجيل الدخول بدون كلمة مرور وإمكانيات تسجيل الدخول باستخدام حسابات اجتماعية.',
+  /** UNTRANSLATED */
+  email_connector_settings_description:
+    'Integrate with your email delivery provider to enable passwordless email registration and sign-in for end-users.',
   parameter_configuration: 'تكوين المعلمة',
   test_connection: 'اختبار',
   save_error_empty_config: 'يرجى إدخال التكوين',

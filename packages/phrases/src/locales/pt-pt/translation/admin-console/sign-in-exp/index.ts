@@ -5,8 +5,9 @@ import sign_up_and_sign_in from './sign-up-and-sign-in.js';
 const sign_in_exp = {
   page_title: 'Experiência de login',
   title: 'Experiência de login',
+  /** UNTRANSLATED */
   description:
-    'Personalize a interface de login para corresponder a sua marca e visualize em tempo real',
+    'Customize the authentication flows and UI, and preview the out-of-the-box experience in real time.',
   tabs: {
     branding: 'Marca',
     sign_up_and_sign_in: 'Registo e login',

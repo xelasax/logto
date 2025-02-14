@@ -1,8 +1,8 @@
 const enterprise_sso = {
   page_title: 'エンタープライズSSO',
   title: 'エンタープライズSSO',
-  subtitle:
-    '企業のアイデンティティプロバイダーとの接続を可能にし、SP主導のシングルサインオンを有効にします。',
+  /** UNTRANSLATED */
+  subtitle: 'Connect the enterprise identity provider and enable Single Sign-On.',
   create: 'エンタープライズコネクターを追加',
   col_connector_name: 'コネクター名',
   col_type: 'タイプ',

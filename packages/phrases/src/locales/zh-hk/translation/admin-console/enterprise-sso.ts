@@ -1,7 +1,8 @@
 const enterprise_sso = {
   page_title: '企業單一登入 (SSO)',
   title: '企業單一登入 (SSO)',
-  subtitle: '連接企業身份提供者並啟用服務提供者啟動的單一登入。',
+  /** UNTRANSLATED */
+  subtitle: 'Connect the enterprise identity provider and enable Single Sign-On.',
   create: '新增企業連接器',
   col_connector_name: '連接器名稱',
   col_type: '類型',

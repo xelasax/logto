@@ -5,8 +5,9 @@ import sign_up_and_sign_in from './sign-up-and-sign-in.js';
 const sign_in_exp = {
   page_title: 'Oturum Açma Deneyimi',
   title: 'Oturum Açma Deneyimi',
+  /** UNTRANSLATED */
   description:
-    'Oturum açma kullanıcı arayüzünü markanıza uyacak şekilde özelleştirin ve gerçek zamanlı olarak görüntüleyin',
+    'Customize the authentication flows and UI, and preview the out-of-the-box experience in real time.',
   tabs: {
     branding: 'Markalaşma',
     sign_up_and_sign_in: 'Kaydol ve Oturum Aç',

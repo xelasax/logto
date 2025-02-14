@@ -7,6 +7,9 @@ const enterprise_sso_details = {
   tab_connection: '連接',
   tab_idp_initiated_auth: 'IdP 發起的 SSO',
   general_settings_title: '一般',
+  /** UNTRANSLATED */
+  general_settings_description:
+    'Configure end-user experience and link enterprise email domain for SP-initiated SSO flow.',
   custom_branding_title: '顯示',
   custom_branding_description:
     '自定義在終端用戶單點登錄流程中顯示的名稱和圖標。 當為空時，將使用默認值。',

@@ -5,6 +5,9 @@ const connector_details = {
   settings: 'Genel ayarlar',
   settings_description:
     "Bağdaştırıcılar Logto'da kritik bir rol oynar. Onların yardımıyla, Logto son kullanıcıların şifresiz kayıt veya giriş yapmasını ve sosyal hesaplarla giriş yapabilme özelliklerini sağlar.",
+  /** UNTRANSLATED */
+  email_connector_settings_description:
+    'Integrate with your email delivery provider to enable passwordless email registration and sign-in for end-users.',
   parameter_configuration: 'Parametre yapılandırması',
   test_connection: 'Bağlantıyı test et',
   save_error_empty_config: 'Lütfen yapılandırmayı girin',

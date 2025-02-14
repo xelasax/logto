@@ -7,6 +7,9 @@ const enterprise_sso_details = {
   tab_connection: '연결',
   tab_idp_initiated_auth: 'IdP-initiated SSO',
   general_settings_title: '일반',
+  /** UNTRANSLATED */
+  general_settings_description:
+    'Configure end-user experience and link enterprise email domain for SP-initiated SSO flow.',
   custom_branding_title: '표시',
   custom_branding_description:
     '엔드 유저의 단일 로그인 흐름에서 표시되는 이름 및 로고를 사용자 정의하세요. 비어 있으면 기본 사용됩니다.',

@@ -39,6 +39,11 @@ const connector = {
     "Nie można mieć wielu łączników społecznościowych z takim samym 'platforma i target'.",
   cannot_overwrite_metadata_for_non_standard_connector:
     'Nie można nadpisać "metadata" tego łącznika, który nie należy do standardu.',
+  email_connector: {
+    /** UNTRANSLATED */
+    bulk_deletion_no_filter:
+      'At least one filter condition must be provided to perform bulk deletion by properties. Supported properties are: {{properties, list(type:conjunction)}}.',
+  },
 };
 
 export default Object.freeze(connector);

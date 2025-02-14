@@ -24,6 +24,8 @@ const application_details = {
   description_placeholder: 'アプリケーションの説明を入力してください',
   config_endpoint: 'OpenID プロバイダ構成エンドポイント',
   issuer_endpoint: '発行者エンドポイント',
+  /** UNTRANSLATED */
+  jwks_uri: 'JWKS URI',
   authorization_endpoint: '認可エンドポイント',
   authorization_endpoint_tip:
     '認証と認可を実行するエンドポイントです。OpenID Connect の<a>認証</a>に使用されます。',
@@ -96,6 +98,9 @@ const application_details = {
   protect_origin_server: 'オリジンサーバーを保護する',
   protect_origin_server_description:
     'Ensure to protect your origin server from direct access. Refer to the guide for more <a>detailed instructions</a>.',
+  /** UNTRANSLATED */
+  third_party_settings_description:
+    'Integrate third-party applications with Logto as your Identity Provider (IdP) using OIDC / OAuth 2.0, featuring a consent screen for user authorization.',
   session_duration: 'セッション期間（日単位）',
   try_it: 'お試しください',
   no_organization_placeholder: 'No organization found. <a>Go to organizations</a>',

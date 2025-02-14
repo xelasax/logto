@@ -1,7 +1,8 @@
 const enterprise_sso = {
   page_title: 'تسجيل الدخول الموحد للمؤسسة',
   title: 'تسجيل الدخول الموحد للمؤسسة',
-  subtitle: 'قم بتوصيل موفر هوية المؤسسة وتمكين تسجيل الدخول الموحد بواسطة مزود الخدمة.',
+  /** UNTRANSLATED */
+  subtitle: 'Connect the enterprise identity provider and enable Single Sign-On.',
   create: 'إضافة موصل المؤسسة',
   col_connector_name: 'اسم الموصل',
   col_type: 'النوع',

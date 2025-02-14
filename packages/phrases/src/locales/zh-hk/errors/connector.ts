@@ -30,6 +30,11 @@ const connector = {
   should_specify_target: '你需要聲明 target 的值。',
   multiple_target_with_same_platform: '同一平台上，多個社交連接器不能重複使用相同的 “Target”。',
   cannot_overwrite_metadata_for_non_standard_connector: '不可覆蓋該連接器的 metadata 參數。',
+  email_connector: {
+    /** UNTRANSLATED */
+    bulk_deletion_no_filter:
+      'At least one filter condition must be provided to perform bulk deletion by properties. Supported properties are: {{properties, list(type:conjunction)}}.',
+  },
 };
 
 export default Object.freeze(connector);

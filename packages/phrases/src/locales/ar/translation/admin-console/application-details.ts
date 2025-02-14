@@ -23,6 +23,8 @@ const application_details = {
   description_placeholder: 'أدخل وصف التطبيق الخاص بك',
   config_endpoint: 'نقطة نهاية تكوين موفر الهوية المفتوحة',
   issuer_endpoint: 'نقطة نهاية المصدر',
+  /** UNTRANSLATED */
+  jwks_uri: 'JWKS URI',
   authorization_endpoint: 'نقطة نهاية الترخيص',
   authorization_endpoint_tip:
     'نقطة النهاية لأداء المصادقة والترخيص. يُستخدم لـ OpenID Connect <a>المصادقة</a>.',
@@ -95,6 +97,9 @@ const application_details = {
   protect_origin_server: 'حماية خادم المصدر الخاص بك',
   protect_origin_server_description:
     'تأكد من حماية خادم المصدر الخاص بك من الوصول المباشر. راجع الدليل للحصول على <a>تعليمات مفصلة</a> أكثر.',
+  /** UNTRANSLATED */
+  third_party_settings_description:
+    'Integrate third-party applications with Logto as your Identity Provider (IdP) using OIDC / OAuth 2.0, featuring a consent screen for user authorization.',
   session_duration: 'مدة الجلسة (بالأيام)',
   try_it: 'جربها',
   no_organization_placeholder: 'لم يتم العثور على أي منظمة. <a>انتقل إلى المنظمات</a>',

@@ -16,7 +16,10 @@ export type Props = {
   readonly title: AdminConsoleKey | ReactElement<typeof DangerousRaw>;
   readonly subtitle?: AdminConsoleKey | ReactElement<typeof DangerousRaw>;
   readonly size?: 'small' | 'medium' | 'large';
-  readonly learnMoreLink?: Pick<TextLinkProps, 'href' | 'targetBlank'>;
+  readonly learnMoreLink?: Pick<TextLinkProps, 'href' | 'targetBlank'> & {
+    linkText?: AdminConsoleKey;
+    isRelativeDocUrl?: boolean;
+  };
   readonly isWordWrapEnabled?: boolean;
   readonly className?: string;
   /**

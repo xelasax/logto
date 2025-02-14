@@ -5,8 +5,9 @@ import sign_up_and_sign_in from './sign-up-and-sign-in.js';
 const sign_in_exp = {
   page_title: 'Опыт входа в систему',
   title: 'Опыт входа в систему',
+  /** UNTRANSLATED */
   description:
-    'Настройте пользовательский интерфейс входа в систему в соответствии с вашим брендом и просматривайте в режиме реального времени',
+    'Customize the authentication flows and UI, and preview the out-of-the-box experience in real time.',
   tabs: {
     branding: 'Брендирование',
     sign_up_and_sign_in: 'Регистрация и вход в систему',

@@ -5,6 +5,9 @@ const connector_details = {
   settings: '通用設置',
   settings_description:
     '連接器在 Logto 中扮演著至關重要的角色。借助它們的幫助，Logto 使終端用戶能夠使用無密碼註冊或登錄的功能以及使用社交帳戶登錄的功能。',
+  /** UNTRANSLATED */
+  email_connector_settings_description:
+    'Integrate with your email delivery provider to enable passwordless email registration and sign-in for end-users.',
   parameter_configuration: '參數配置',
   test_connection: '測試',
   save_error_empty_config: '請輸入配置內容',

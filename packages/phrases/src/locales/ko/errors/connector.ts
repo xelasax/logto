@@ -31,6 +31,11 @@ const connector = {
   should_specify_target: "'목표'를 반드시 지정해야 해요.",
   multiple_target_with_same_platform: '같은 목표와 플랫폼에 여러 소셜 연동을 가질 수 없어요.',
   cannot_overwrite_metadata_for_non_standard_connector: '이 연동의 메타데이터를 덮어쓸 수 없어요.',
+  email_connector: {
+    /** UNTRANSLATED */
+    bulk_deletion_no_filter:
+      'At least one filter condition must be provided to perform bulk deletion by properties. Supported properties are: {{properties, list(type:conjunction)}}.',
+  },
 };
 
 export default Object.freeze(connector);

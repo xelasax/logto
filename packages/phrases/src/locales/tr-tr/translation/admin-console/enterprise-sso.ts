@@ -1,8 +1,8 @@
 const enterprise_sso = {
   page_title: 'Kurumsal SSO',
   title: 'Kurumsal SSO',
-  subtitle:
-    'Kurumsal kimlik sağlayıcısını bağlayın ve SP başlatmalı Tek Oturum Açmayı etkinleştirin.',
+  /** UNTRANSLATED */
+  subtitle: 'Connect the enterprise identity provider and enable Single Sign-On.',
   create: 'Kurumsal bağlayıcı ekle',
   col_connector_name: 'Bağlayıcı adı',
   col_type: 'Tür',

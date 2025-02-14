@@ -5,8 +5,9 @@ import sign_up_and_sign_in from './sign-up-and-sign-in.js';
 const sign_in_exp = {
   page_title: 'Anmeldeoberfläche',
   title: 'Anmeldeoberfläche',
+  /** UNTRANSLATED */
   description:
-    'Passe die Benutzeroberfläche für die Anmeldung an deine Marke an und zeige eine Vorschau in Echtzeit an',
+    'Customize the authentication flows and UI, and preview the out-of-the-box experience in real time.',
   tabs: {
     branding: 'Branding',
     sign_up_and_sign_in: 'Anmeldung und Registrierung',

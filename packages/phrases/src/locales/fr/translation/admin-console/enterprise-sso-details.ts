@@ -8,6 +8,9 @@ const enterprise_sso_details = {
   tab_connection: 'Connexion',
   tab_idp_initiated_auth: 'SSO initié par IdP',
   general_settings_title: 'Général',
+  /** UNTRANSLATED */
+  general_settings_description:
+    'Configure end-user experience and link enterprise email domain for SP-initiated SSO flow.',
   custom_branding_title: 'Affichage',
   custom_branding_description:
     "Personnalisez le nom et le logo affichés dans le flux de connexion unique des utilisateurs finaux. Lorsqu'ils sont vides, les valeurs par défaut sont utilisées.",

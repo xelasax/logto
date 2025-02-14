@@ -1,8 +1,8 @@
 const enterprise_sso = {
   page_title: 'SSO aziendale',
   title: 'SSO aziendale',
-  subtitle:
-    "Collega il provider di identità aziendale e abilita l'accesso unico inizializzato dal fornitore di servizi.",
+  /** UNTRANSLATED */
+  subtitle: 'Connect the enterprise identity provider and enable Single Sign-On.',
   create: 'Aggiungi connettore aziendale',
   col_connector_name: 'Nome connettore',
   col_type: 'Tipo',

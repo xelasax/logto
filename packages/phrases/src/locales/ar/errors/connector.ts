@@ -34,6 +34,11 @@ const connector = {
     'لا يمكن أن يكون لديك موصلات اجتماعية متعددة لها نفس الهدف والمنصة.',
   cannot_overwrite_metadata_for_non_standard_connector:
     'لا يمكن استبدال بيانات الموصل غير القياسي هذا.',
+  email_connector: {
+    /** UNTRANSLATED */
+    bulk_deletion_no_filter:
+      'At least one filter condition must be provided to perform bulk deletion by properties. Supported properties are: {{properties, list(type:conjunction)}}.',
+  },
 };
 
 export default Object.freeze(connector);

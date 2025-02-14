@@ -39,6 +39,11 @@ const connector = {
     'Vous ne pouvez pas avoir plusieurs connecteurs sociaux ayant la même "target" et la même plateforme.',
   cannot_overwrite_metadata_for_non_standard_connector:
     'Les "metadata" de ce connecteur ne peuvent pas être modifiés.',
+  email_connector: {
+    /** UNTRANSLATED */
+    bulk_deletion_no_filter:
+      'At least one filter condition must be provided to perform bulk deletion by properties. Supported properties are: {{properties, list(type:conjunction)}}.',
+  },
 };
 
 export default Object.freeze(connector);

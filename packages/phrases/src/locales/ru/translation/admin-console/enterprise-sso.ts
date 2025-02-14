@@ -1,8 +1,8 @@
 const enterprise_sso = {
   page_title: 'Единый вход в предприятие',
   title: 'Единый вход в предприятие',
-  subtitle:
-    'Подключите поставщика идентификации предприятия и включите одностороннюю аутентификацию с инициацией службы.',
+  /** UNTRANSLATED */
+  subtitle: 'Connect the enterprise identity provider and enable Single Sign-On.',
   create: 'Добавить предприятий коннектор',
   col_connector_name: 'Имя коннектора',
   col_type: 'Тип',

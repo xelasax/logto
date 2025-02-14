@@ -1,8 +1,8 @@
 const enterprise_sso = {
   page_title: 'SSO Empresarial',
   title: 'SSO Empresarial',
-  subtitle:
-    'Conecte o fornecedor de identidade empresarial e ative o Logon Único iniciado pelo SP.',
+  /** UNTRANSLATED */
+  subtitle: 'Connect the enterprise identity provider and enable Single Sign-On.',
   create: 'Adicionar conector empresarial',
   col_connector_name: 'Nome do conector',
   col_type: 'Tipo',
