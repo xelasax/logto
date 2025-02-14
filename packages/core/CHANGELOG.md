@@ -1,5 +1,49 @@
 # Change Log
 
+## 1.24.1
+
+### Patch Changes
+
+- e7accfdab: prevent i18n context contamination by using request-scoped instances
+
+  This bug fix resolves a concurrency issue in i18n handling by moving from a global i18next instance to request-scoped instances.
+
+  ### Problem
+
+  When handling concurrent requests:
+
+  - The shared global `i18next` instance's language was being modified via `changeLanguage()` calls.
+  - This could lead to race conditions where requests might receive translations in unexpected languages.
+  - Particularly problematic in multi-tenant environments with different language requirements.
+
+  ### Solution
+
+  - Updated `koaI18next` middleware to create a cloned i18next instance for each request.
+  - Attach the request-scoped instance to Koa context (`ctx.i18n`) All subsequent middleware and handlers should now use `ctx.i18n` instead of the global `i18next` instance.
+  - Maintains the global instance for initialization while preventing cross-request contamination
+
+- e11e57de8: bump dependencies for security update
+- d44007faa: apply custom domain to SAML SSO and SAML applications
+- Updated dependencies [096367ff5]
+- Updated dependencies [bd18da4cf]
+- Updated dependencies [0b785ee0d]
+- Updated dependencies [cb261024b]
+- Updated dependencies [e11e57de8]
+- Updated dependencies [d44007faa]
+  - @logto/console@1.22.0
+  - @logto/experience-legacy@1.11.1
+  - @logto/experience@1.11.2
+  - @logto/phrases@1.18.0
+  - @logto/cli@1.24.1
+  - @logto/connector-kit@4.1.1
+  - @logto/language-kit@1.1.1
+  - @logto/core-kit@2.5.4
+  - @logto/app-insights@2.0.1
+  - @logto/schemas@1.24.1
+  - @logto/shared@3.1.4
+  - @logto/demo-app@1.4.2
+  - @logto/phrases-experience@1.9.1
+
 ## 1.24.0
 
 ### Minor Changes
