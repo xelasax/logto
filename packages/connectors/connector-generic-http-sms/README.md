@@ -1,62 +1,206 @@
 # Generic HTTP SMS Connector
 
-Welcome to the generic Logto connector for any third-party SMS service! This tool lets you connect Logto to your preferred SMS provider with a simple HTTP endpoint.
+Welcome to the **Generic HTTP SMS Connector** for Logto — your bridge to any third-party SMS service!
 
-## **Let's Get You Started**
+With just a simple HTTP endpoint, you can connect Logto to virtually any SMS provider that supports a web-based API.
 
-This connector is designed to be super flexible. It works by sending an HTTP request to an endpoint you provide. Whenever Logto needs to send an SMS—like a verification code for a new user, a password reset, or a sign-in notification—it will send a **webhook** to your API. Your service then receives this webhook and handles the actual message delivery to the user's phone. This allows you to integrate with virtually any SMS provider that has a web-based API.
+---
 
-## **Setting Up Your Connector**
+## 🚀 Overview
 
-To get this connector working, you'll need to provide a few key pieces of information. Think of it as giving Logto a map to your SMS service's front door!
+This connector is **fully customizable**.
 
-### **Configuration Options**
+Whenever Logto needs to send an SMS—such as:
 
-- **Endpoint**: This is the full URL of your API endpoint that handles sending SMS messages. For example, `https://api.your-sms-provider.com/send`.
-- **Method**: Just let us know whether your endpoint needs a `GET` or `POST` request. The method you choose will determine how the message data is sent.
-- **Authorization** (Optional): If your API requires an authorization token (e.g., an API key), you can pop it in here. Logto will automatically add it to the `Authorization` header for you.
-- **Headers** (Optional): Need to send any extra headers, such as `Content-Type: application/json`? No problem! Just provide them as a JSON object.
-- **Query Parameters** (Optional): For `GET` requests, you can configure the data that will be appended to the URL as query parameters.
-- **Body Parameters** (Optional): For `POST` requests, you can build the JSON body that your API expects.
+- A registration verification code
+- A sign-in OTP
+- A password reset code
+- A one-time OTP for custom flows
+- Any generic notification
 
-Feel free to use placeholders like `{{to}}`, `{{type}}`, and `{{message}}` in your configuration. They'll be replaced with dynamic information for each message!
+…it will call the HTTP endpoint you configure.
 
-> 💡 Friendly Tip
->
->
-> To keep the authentication flow running smoothly, your endpoint needs to send back a successful `2xx` response when it receives the request. This lets Logto know that the message has been successfully handed off. For peace of mind, we recommend having a monitoring system in place to ensure your messages are actually delivered!
->
+Your endpoint is responsible for delivering the message to the recipient’s phone.
 
-## **How It Works: Dynamic Placeholders**
+---
 
-The connector will automatically swap out special placeholders with real data when it's time to send an SMS.
+## ⚙️ Configuration
+
+When setting up the connector in the Logto Admin Console, you’ll configure:
+
+| **Field** | **Description** |
+| --- | --- |
+| **Endpoint** | The full URL of your SMS provider’s send API. Example: `https://api.your-sms-provider.com/send`. |
+| **Method** | HTTP method (`GET` or `POST`) your API expects. |
+| **Authorization** *(optional)* | API key or token for your provider. Added as `Authorization` header. |
+| **Headers** *(optional)* | Additional headers (e.g., `Content-Type: application/json`). |
+| **Query Parameters** *(optional)* | Key-value pairs appended to the URL for `GET` requests. |
+| **Body Parameters** *(optional)* | JSON payload for `POST` requests. |
+| **Templates** *(optional, default provided)* | Message templates for each `usageType` (see below). |
+
+---
+
+## 📝 Templates
+
+Templates define the message content for different scenarios.
+
+You can use **handlebars-style placeholders** (e.g., `{{message}}`) that Logto will replace at runtime.
+
+### Default templates
+
+If you don’t provide your own, the connector includes these:
+
+```json
+[
+    { "usageType": "Register", "content": "Register code: {{message}}" },
+    { "usageType": "SignIn", "content": "Sign in code: {{message}}" },
+    { "usageType": "ForgotPassword", "content": "Reset code: {{message}}" },
+    { "usageType": "Generic", "content": "{{message}}" },
+    { "usageType": "OTP", "content": "Your one-time code is: {{message}}" }
+]
+```
+
+**Available `usageType` values:**
+
+- `Register`
+- `SignIn`
+- `ForgotPassword`
+- `Generic`
+- `OTP` *(custom extension)*
+
+---
+
+## Dynamic Placeholders
+
+These placeholders are replaced by actual values when a message is sent:
 
 | **Placeholder** | **Description** |
 | --- | --- |
-| `{{to}}` | The phone number of the person receiving the message (e.g., `+1234567890`). This always includes the country code. |
-| `{{type}}` | The purpose of the message (e.g., `SignIn`, `Register`, `ResetPassword`). |
-| `{{message}}` | The actual content of the SMS (like a verification code). |
+| `{{to}}` | Recipient phone number with country code. |
+| `{{type}}` | Message usage type (e.g., `SignIn`, `Register`, `OTP`). |
+| `{{message}}` | The message body (such as a verification code). |
 
-For example, if you're using a `POST` request, your body might look something like this:
+---
 
-```json
-{
-  "recipient": "{{to}}",
-  "text_content": "Hello! Your verification code for Logto is: {{message}}"
-}
+## 📦 Example Configurations
 
-```
-
-Or, for a `GET` request, you could set up your query parameters like this:
+### POST request example
 
 ```json
 {
-  "to": "{{to}}",
-  "message": "{{message}}"
+  "endpoint": "https://api.your-sms-provider.com/send",
+  "method": "POST",
+  "headers": { "Content-Type": "application/json" },
+  "bodyParams": {
+    "to": "{{to}}",
+    "text": "{{message}}"
+  }
 }
+```
+
+### GET request example
+
+```json
+{
+  "endpoint": "https://api.your-sms-provider.com/send",
+  "method": "GET",
+  "queryParams": {
+    "to": "{{to}}",
+    "message": "{{message}}"
+  }
+}
+```
+
+---
+
+## **Developer Integration Guide**
+
+This section explains **how Logto populates placeholders** and how your connector processes them.
+
+1. **Logto triggers a send**
+    
+    When a user action requires an SMS, Logto creates a payload:
+    
+    ```json
+    {
+      "to": "+1234567890",
+      "type": "OTP",
+      "message": "123456"
+    }
+    
+    ```
+    
+2. **Selecting the correct template**
+    
+    ```tsx
+    const template = templates.find(t => t.usageType === type);
+    
+    ```
+    
+3. **Replacing placeholders**
+    
+    ```tsx
+    import { replaceSendMessageHandlebars } from '@logto/connector-kit';
+    
+    const finalMessage = replaceSendMessageHandlebars(template.content, {
+      to: payload.to,
+      type: payload.type,
+      message: payload.message
+    });
+    ```
+    
+4. **Sending to your provider**
+    
+    The processed message is inserted into your configured `bodyParams` or `queryParams`, then sent to your provider.
+    
+
+---
+
+## Process Flow Diagram
+
+```
+mathematica
+CopyEdit
+┌────────────┐
+│   User     │
+│ (Sign In)  │
+└─────┬──────┘
+      │
+      ▼
+┌──────────────┐
+│    Logto     │
+│  (Triggers   │
+│ SendMessage) │
+└─────┬────────┘
+      │
+      ▼
+┌────────────────────┐
+│ Generic HTTP SMS    │
+│ Connector           │
+│ - Select template   │
+│ - Replace {{...}}   │
+└─────┬───────────────┘
+      │
+      ▼
+┌────────────────────┐
+│ Your SMS Provider   │
+│ API Endpoint        │
+│ (e.g., Twilio)      │
+└─────┬───────────────┘
+      │
+      ▼
+┌────────────┐
+│   User's   │
+│  Phone 📱  │
+└────────────┘
 
 ```
 
-This would generate a URL that looks something like this: `https://your-api.com/send-sms?to=+1234567890&message=123456`.
+---
 
-If you're curious about all the different message types, you can check them out in the Logto documentation. The full `SendMessageData` type definition is also available in the [connector-kit](https://github.com/logto-io/logto/tree/master/packages/toolkit/connector-kit/src/types/passwordless.ts) repository.
+## Implementation Notes
+
+- `templates` must be an **array** of `{ usageType, content }`.
+- You can extend Logto's built-in `TemplateType` enum to include `OTP`.
+- Your endpoint must return `2xx` to indicate success.
+- Use `replaceSendMessageHandlebars` for placeholder substitution.
