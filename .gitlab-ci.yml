@@ -17,6 +17,7 @@ stages:
   - .pre
   - build
   - e2e
+  - deploy
 
 # Workflow: pipeline is created on manual UI triggers or pushes to target branches.
 workflow:
@@ -169,3 +170,168 @@ e2e:
         | grep -o '"id": "[^"]*"' | sort | uniq
   after_script:
     - docker rm -f logto-e2e 2>/dev/null || true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage deploy – Deploy to Kubernetes (modern bitnami/kubectl authentication)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Kubectl Authentication template
+.kubectl_k8s_auth:
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: ["/bin/sh", "-c"]
+  before_script:
+    - |
+      set -e
+      export KUBECONFIG="${CI_PROJECT_DIR}/.kubeconfig"
+      export DEPLOY_OVERLAY=$CI_ENVIRONMENT_NAME
+      export K8S_NAMESPACE=$CI_ENVIRONMENT_NAME
+
+      case "$DEPLOY_OVERLAY" in
+        development|staging|production) ;;
+        *) echo "Invalid environment"; exit 1 ;;
+      esac
+
+      test -n "${K8S_CA_B64:-}"    || { echo "K8S_CA_B64 is not set";    exit 1; }
+      test -n "${K8S_API_URL:-}"   || { echo "K8S_API_URL is not set";   exit 1; }
+
+      ENV_UPPER=$(echo "$CI_ENVIRONMENT_NAME" | tr '[:lower:]' '[:upper:]')
+      TOKEN_VAR="K8S_TOKEN_${ENV_UPPER}"
+      eval "K8S_TOKEN=\${${TOKEN_VAR}}"
+      test -n "${K8S_TOKEN:-}"     || { echo "${TOKEN_VAR} is not set";     exit 1; }
+
+      K8S_API_URL="$(printf '%s' "$K8S_API_URL" | tr -d '\r\n')"
+      if [ -f "$K8S_API_URL" ]; then K8S_API_URL=$(cat "$K8S_API_URL" | tr -d '\r\n'); fi
+
+      if [ -f "$K8S_CA_B64" ]; then
+        if grep -q "BEGIN CERTIFICATE" "$K8S_CA_B64"; then cp "$K8S_CA_B64" k8s-ca.crt
+        else tr -d '\r\n\t ' < "$K8S_CA_B64" | base64 -d > k8s-ca.crt; fi
+      elif printf '%s' "$K8S_CA_B64" | grep -q "BEGIN CERTIFICATE"; then printf '%s\n' "$K8S_CA_B64" > k8s-ca.crt
+      else printf '%s' "$K8S_CA_B64" | tr -d '\r\n\t ' | base64 -d > k8s-ca.crt; fi
+
+      kubectl config set-cluster k3s --server="$K8S_API_URL" --certificate-authority=k8s-ca.crt --embed-certs=true
+      if [ -f "$K8S_TOKEN" ]; then K8S_TOKEN=$(cat "$K8S_TOKEN"); fi
+      K8S_TOKEN="$(printf -- '%s' "$K8S_TOKEN" | tr -d '\r\n ')"
+
+      kubectl config set-credentials gitlab-sa --token="$K8S_TOKEN"
+      kubectl config set-context gitlab --cluster=k3s --user=gitlab-sa
+      kubectl config use-context gitlab
+
+# Sync configuration & secrets
+.k8s_sync:
+  extends: .kubectl_k8s_auth
+  stage: deploy
+  script:
+    - |
+      set -e
+      kubectl apply -f "k8s/overlays/${CI_ENVIRONMENT_NAME}/namespace.yaml"
+
+      ENVFILE="$(mktemp)"
+      trap 'rm -f "$ENVFILE"' EXIT
+
+      # Dynamic variable collection:
+      APP_VARS_REGEX="^(LOGTO_|DB_|REDIS_|TRUST_PROXY_|PRIVATE_KEY_)"
+
+      env | grep -E "$APP_VARS_REGEX" > "$ENVFILE" || true
+
+      kubectl create secret generic logto-secrets \
+        --from-env-file="$ENVFILE" \
+        -n "$CI_ENVIRONMENT_NAME" \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+      echo "Synced all matching environment variables to secret/logto-secrets in $CI_ENVIRONMENT_NAME"
+
+      if [ -n "$DEPLOY_TOKEN_USER" ]; then
+        kubectl create secret docker-registry gitlab-registry \
+          --docker-server="$CI_REGISTRY" \
+          --docker-username="$DEPLOY_TOKEN_USER" \
+          --docker-password="$DEPLOY_TOKEN_PASSWORD" \
+          -n "$CI_ENVIRONMENT_NAME" \
+          --dry-run=client -o yaml | kubectl apply -f -
+      fi
+
+# Deploy job template
+.k8s_deploy:
+  extends: .kubectl_k8s_auth
+  stage: deploy
+  script:
+    - |
+      set -e
+      if [ "$CI_COMMIT_TAG" ]; then
+        TAG="$CI_COMMIT_TAG"
+      else
+        TAG="$CI_COMMIT_BRANCH"
+      fi
+      APPLICATION_IMAGE="${IMAGE_NAME}:${TAG}"
+
+      kubectl apply -f "k8s/overlays/${CI_ENVIRONMENT_NAME}/namespace.yaml"
+      kubectl kustomize "k8s/overlays/${CI_ENVIRONMENT_NAME}" \
+        | sed "s|registry.invalid/logto:ci-placeholder|${APPLICATION_IMAGE}|g" \
+        | sed "s|PLACEHOLDER_LOGTO_HOST|${LOGTO_HOST:-logto.ghtickle.dev}|g" \
+        | sed "s|PLACEHOLDER_LOGTO_ADMIN_HOST|${LOGTO_ADMIN_HOST:-admin.logto.ghtickle.dev}|g" \
+        | sed -E "s/\"?REDEPLOY_TRIGGER_PLACEHOLDER\"?/\"${CI_PIPELINE_ID}\"/g" \
+        | kubectl apply -f -
+
+      kubectl rollout status deployment/logto -n "$CI_ENVIRONMENT_NAME" --timeout=300s
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Environment deployment definitions (triggered manually via UI/push rules)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Development
+k8s:sync-gitlab-env:development:
+  extends: .k8s_sync
+  environment:
+    name: development
+  rules:
+    - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+      when: manual
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual
+
+deploy:k8s:development:
+  extends: .k8s_deploy
+  needs: ["build-image", "k8s:sync-gitlab-env:development"]
+  environment:
+    name: development
+  rules:
+    - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+      when: manual
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual
+
+# Staging
+k8s:sync-gitlab-env:staging:
+  extends: .k8s_sync
+  environment:
+    name: staging
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual
+
+deploy:k8s:staging:
+  extends: .k8s_deploy
+  needs: ["build-image", "k8s:sync-gitlab-env:staging"]
+  environment:
+    name: staging
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual
+
+# Production
+k8s:sync-gitlab-env:production:
+  extends: .k8s_sync
+  environment:
+    name: production
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual
+
+deploy:k8s:production:
+  extends: .k8s_deploy
+  needs: ["build-image", "k8s:sync-gitlab-env:production"]
+  environment:
+    name: production
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual

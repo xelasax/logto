@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logto
+  labels:
+    app.kubernetes.io/name: logto
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: logto
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: logto
+      annotations:
+        gitlab.com/redeploy-trigger: "REDEPLOY_TRIGGER_PLACEHOLDER"
+    spec:
+      imagePullSecrets:
+        - name: gitlab-registry
+      initContainers:
+        - name: logto-db-migration
+          image: registry.invalid/logto:ci-placeholder
+          command: ["sh", "-c", "npm run cli db seed -- --swe && npm run cli db alteration deploy"]
+          envFrom:
+            - configMapRef:
+                name: logto-config
+            - secretRef:
+                name: logto-secrets
+                optional: true
+      containers:
+        - name: logto
+          image: registry.invalid/logto:ci-placeholder
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: api
+              containerPort: 3001
+            - name: admin
+              containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: logto-config
+            - secretRef:
+                name: logto-secrets
+                optional: true
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1536Mi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: api
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: api
+            initialDelaySeconds: 30
+            periodSeconds: 10
