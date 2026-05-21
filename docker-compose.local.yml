@@ -1,0 +1,77 @@
+# Docker Compose for local development of Logto with all connectors built from source
+# This compose file builds Logto from the current source code, including the new local-sms-service connector.
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: logto-postgres
+    user: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: p0stgr3s
+      POSTGRES_DB: logto
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - logto-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: logto-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - logto-network
+
+  logto:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logto-app
+    image: logto/local:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "npm run cli db seed -- --swe && npm start"]
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+    environment:
+      TRUST_PROXY_HEADER: "1"
+      DB_URL: postgres://postgres:p0stgr3s@postgres:5432/logto
+      REDIS_URL: redis://redis:6379
+      # Optional: Set your public URL for OIDC callbacks
+      # ENDPOINT: http://localhost:3001
+      # ADMIN_ENDPOINT: http://localhost:3002
+      PRIVATE_KEY_ROTATION_GRACE_PERIOD: "0"
+    # Volume mount disabled - using built connector from image
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3001 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - logto-network
+
+networks:
+  logto-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,13 @@
+{
+  "name": "local-sms-mock-server",
+  "version": "1.0.0",
+  "description": "Mock SMS server for testing local-sms-service connector",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

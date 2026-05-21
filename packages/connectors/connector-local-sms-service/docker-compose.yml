@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  local-sms-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: local-sms-connector
+    # The connector package image - used for distribution/verification
+    command: ["node", "-e", "const { createConnector } = require('./lib/index.js'); console.log('✅ Local SMS Service Connector loaded successfully');"]
+    networks:
+      - local-sms-network
+
+  mock-sms-provider:
+    image: node:22-alpine
+    container_name: mock-sms-provider
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./test-server:/app
+    command: >
+      sh -c "npm install && node server.js"
+    networks:
+      - local-sms-network
+
+  test-runner:
+    image: node:22-alpine
+    container_name: connector-test-runner
+    working_dir: /test
+    volumes:
+      - ./test-client:/test
+    depends_on:
+      - mock-sms-provider
+    environment:
+      - SMS_ENDPOINT=http://mock-sms-provider:3000/send-sms
+    command: >
+      sh -c "
+        npm init -y &&
+        npm install @logto/connector-kit@npm:@logto/connector-kit@file:/connector-lib &&
+        node test-connector.js
+      "
+    volumes:
+      - ./lib:/connector-lib:ro
+    networks:
+      - local-sms-network
+
+networks:
+  local-sms-network:
+    driver: bridge
