@@ -73,8 +73,6 @@ build-image:
   rules:
     - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
     - if: $CI_COMMIT_BRANCH == "master"
-  tags:
-    - docker
   before_script:
     # Authenticate with the GitLab Container Registry using the CI job token
     - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
@@ -134,8 +132,6 @@ e2e:
     TRUST_PROXY_HEADER: "1"
     PRIVATE_KEY_ROTATION_GRACE_PERIOD: "0"
     DOCKER_TLS_CERTDIR: "/certs"
-  tags:
-    - docker
   before_script:
     - apk add --no-cache curl
     # Authenticate with the GitLab Container Registry using the CI job token
