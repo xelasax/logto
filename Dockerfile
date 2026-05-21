@@ -4,6 +4,7 @@
 FROM node:22-alpine AS builder
 WORKDIR /etc/logto
 ENV CI=true
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # No need for Docker build
 ENV PUPPETEER_SKIP_DOWNLOAD=true
