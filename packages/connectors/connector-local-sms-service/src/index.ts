@@ -27,11 +27,12 @@ const replacePlaceholders = (value: unknown, phone: string, message: string): un
     return value.map((item) => replacePlaceholders(item, phone, message));
   }
   if (value && typeof value === 'object') {
-    const result: Record<string, unknown> = {};
-    for (const [key, value_] of Object.entries(value)) {
-      result[key] = replacePlaceholders(value_, phone, message);
-    }
-    return result;
+    return Object.fromEntries(
+      Object.entries(value).map(([key, value_]) => [
+        key,
+        replacePlaceholders(value_, phone, message),
+      ])
+    );
   }
   return value;
 };
@@ -66,6 +67,7 @@ const sendMessage =
 
     // Build URL with query parameters (with placeholder replacement)
     const url = new URL(endpoint);
+    /* eslint-disable-next-line no-restricted-syntax */
     const finalQueryParams = replacePlaceholders(queryParams, to, message) as Record<
       string,
       string
@@ -74,52 +76,44 @@ const sendMessage =
       url.searchParams.append(key, String(value));
     }
 
-    // Prepare request options
-    const requestOptions: {
-      headers: Record<string, string>;
-      searchParams?: Record<string, string>;
-      form?: Record<string, string>;
-      json?: unknown;
-    } = {
-      headers: { ...headers },
+    // Prepare request options functionally to avoid mutation and reduce complexity
+    const getHeaders = (): Record<string, string> => {
+      if (headers['Content-Type']) {
+        return { ...headers };
+      }
+      if (method === 'POST') {
+        const contentType = bodyParams ? 'application/x-www-form-urlencoded' : 'application/json';
+        return { 'Content-Type': contentType, ...headers };
+      }
+      return { ...headers };
     };
 
-    // Handle GET vs POST
-    if (method === 'GET') {
-      // For GET, parameters go in query string (already added to URL)
-      // No body
-    } else {
-      // POST method
-      if (bodyParams) {
-        // Form URL-encoded
-        const finalBodyParams = replacePlaceholders(bodyParams, to, message) as Record<
-          string,
-          string
-        >;
-        requestOptions.form = { ...finalBodyParams };
-        // Ensure content-type if not set
-        if (!headers['Content-Type']) {
-          requestOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-        }
-      } else if (bodyJson) {
-        // JSON body
-        const finalBodyJson = replacePlaceholders(bodyJson, to, message) as Record<string, unknown>;
-        requestOptions.json = { ...finalBodyJson };
-        if (!headers['Content-Type']) {
-          requestOptions.headers['Content-Type'] = 'application/json';
-        }
-      } else {
-        // Default: send minimal JSON with phone and message
-        requestOptions.json = {
-          to,
-          message,
-          ...payload,
-        };
-        if (!headers['Content-Type']) {
-          requestOptions.headers['Content-Type'] = 'application/json';
-        }
+    const getForm = (): Record<string, string> | undefined => {
+      if (method === 'POST' && bodyParams) {
+        /* eslint-disable-next-line no-restricted-syntax */
+        return replacePlaceholders(bodyParams, to, message) as Record<string, string>;
       }
-    }
+      return undefined;
+    };
+
+    const getJson = (): unknown | undefined => {
+      if (method === 'POST') {
+        if (bodyParams) {
+          return undefined;
+        }
+        if (bodyJson) {
+          return replacePlaceholders(bodyJson, to, message);
+        }
+        return { to, message, ...payload };
+      }
+      return undefined;
+    };
+
+    const requestOptions = {
+      headers: getHeaders(),
+      ...(getForm() ? { form: getForm() } : {}),
+      ...(getJson() ? { json: getJson() } : {}),
+    };
 
     try {
       const response =

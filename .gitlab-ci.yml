@@ -51,6 +51,8 @@ lint:
       - .pnpm-store/
   script:
     - pnpm i --frozen-lockfile
+    # Build package dependencies to resolve types for TS/ESLint
+    - pnpm --filter "@logto/connector-local-sms-service..." prepack
     # Scope to the connector we own so unrelated packages cannot fail the pipeline
     - pnpm --filter "@logto/connector-local-sms-service" lint
 

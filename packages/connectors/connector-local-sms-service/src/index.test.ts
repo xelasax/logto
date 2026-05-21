@@ -1,6 +1,7 @@
 import nock from 'nock';
 
 import { TemplateType } from '@logto/connector-kit';
+import { vi, describe, it, expect, afterEach } from 'vitest';
 
 import createConnector from './index.js';
 import { mockedConfig } from './mock.js';
@@ -149,10 +150,9 @@ describe('Local SMS Service connector', () => {
   it('should handle template with different usageType', async () => {
     const url = new URL(mockedConfig.endpoint);
     const mockPost = nock(url.origin)
-      .post(url.pathname, (body) => {
-        expect(body).toMatchObject({
-          message: expect.stringContaining('verification code is 123456'),
-        });
+      .post(url.pathname, (body: unknown) => {
+        const bodyObject = body as Record<string, unknown>;
+        expect(bodyObject.message).toContain('verification code is 123456');
         return true;
       })
       .query({ api_key: 'test-api-key' })
