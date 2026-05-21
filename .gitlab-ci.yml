@@ -98,8 +98,8 @@ build-image:
         .
       
       # Sanity check: connector binary must be present in the image
-      docker run --rm "$IMAGE_NAME:$TAG" \
-        ls /etc/logto/packages/connectors/connector-local-sms-service/lib/ \
+      docker run --rm --entrypoint sh "$IMAGE_NAME:$TAG" \
+        -c "ls /etc/logto/packages/connectors/connector-local-sms-service/lib/" \
         | grep index.js
       
       # Push both tags to the GitLab Container Registry
@@ -143,13 +143,14 @@ e2e:
       
       docker run -d --rm \
         --name logto-e2e \
+        --entrypoint sh \
         --network host \
         -e DB_URL \
         -e REDIS_URL \
         -e TRUST_PROXY_HEADER \
         -e PRIVATE_KEY_ROTATION_GRACE_PERIOD \
         "$IMAGE_NAME:$CI_COMMIT_BRANCH" \
-        sh -c "npm run cli db seed -- --swe && npm start"
+        -c "npm run cli db seed -- --swe && npm start"
       
       # Wait up to 5 minutes for cold-start (mapped on the 'docker' host interface due to host network inside dind)
       echo "Waiting for Logto to become healthy..."
