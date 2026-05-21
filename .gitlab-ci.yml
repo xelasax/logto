@@ -167,7 +167,7 @@ build-image:
       trap 'rm -f "$ENVFILE"' EXIT
 
       # Dynamic variable collection:
-      APP_VARS_REGEX="^(LOGTO_|DB_|REDIS_|TRUST_PROXY_|PRIVATE_KEY_|SECRET_VAULT_|STATUS_API_|CASE_SENSITIVE_|USER_DEFAULT_|DATABASE_|TENANT_POOL_|DEV_FEATURES_|INTEGRATION_TEST|NODE_ENV|ENDPOINT|ADMIN_ENDPOINT|CLOUD_ENDPOINT|PATH_BASED_MULTI_TENANCY|IS_CLOUD|MULTIPLE_CUSTOM_DOMAINS_ENABLED|HTTPS_|POSTHOG_)"
+      APP_VARS_REGEX="^(LOGTO_|DB_|REDIS_|TRUST_PROXY_|PRIVATE_KEY_|SECRET_VAULT_|STATUS_API_|CASE_SENSITIVE_|USER_DEFAULT_|DATABASE_|TENANT_POOL_|DEV_FEATURES_|INTEGRATION_TEST|NODE_ENV|CLOUD_ENDPOINT|PATH_BASED_MULTI_TENANCY|IS_CLOUD|MULTIPLE_CUSTOM_DOMAINS_ENABLED|HTTPS_|POSTHOG_)"
 
       env | grep -E "$APP_VARS_REGEX" > "$ENVFILE" || true
 
@@ -201,11 +201,14 @@ build-image:
       fi
       APPLICATION_IMAGE="${IMAGE_NAME}:${TAG}"
 
+      CLEAN_LOGTO_HOST=$(echo "${LOGTO_HOST:-${ENDPOINT:-logto.ghtickle.dev}}" | sed -E 's|^https?://||')
+      CLEAN_LOGTO_ADMIN_HOST=$(echo "${LOGTO_ADMIN_HOST:-${ADMIN_ENDPOINT:-admin.logto.ghtickle.dev}}" | sed -E 's|^https?://||')
+
       kubectl apply -f "k8s/overlays/${CI_ENVIRONMENT_NAME}/namespace.yaml"
       kubectl kustomize "k8s/overlays/${CI_ENVIRONMENT_NAME}" \
         | sed "s|registry.invalid/logto:ci-placeholder|${APPLICATION_IMAGE}|g" \
-        | sed "s|PLACEHOLDER_LOGTO_HOST|${LOGTO_HOST:-logto.ghtickle.dev}|g" \
-        | sed "s|PLACEHOLDER_LOGTO_ADMIN_HOST|${LOGTO_ADMIN_HOST:-admin.logto.ghtickle.dev}|g" \
+        | sed "s|PLACEHOLDER_LOGTO_HOST|${CLEAN_LOGTO_HOST}|g" \
+        | sed "s|PLACEHOLDER_LOGTO_ADMIN_HOST|${CLEAN_LOGTO_ADMIN_HOST}|g" \
         | sed -E "s/\"?REDEPLOY_TRIGGER_PLACEHOLDER\"?/\"${CI_PIPELINE_ID}\"/g" \
         | kubectl apply -f -
 
