@@ -79,7 +79,7 @@ build-image:
     - |
       docker buildx build --pull \
         --progress=plain \
-        --build-arg ADDITIONAL_CONNECTOR_ARGS="--all" \
+        --build-arg additional_connector_args="--all" \
         -t "$IMAGE_NAME:$TAG" \
         -t "$IMAGE_NAME:latest" \
         --load \
