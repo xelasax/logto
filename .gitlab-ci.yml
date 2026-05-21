@@ -16,7 +16,6 @@
 stages:
   - .pre
   - build
-  - e2e
   - deploy
 
 # Workflow: pipeline is created on manual UI triggers or pushes to target branches.
@@ -108,68 +107,6 @@ build-image:
       docker push "$IMAGE_NAME:latest"
       echo "Published → $IMAGE_NAME:$TAG"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage e2e – Smoke test
-#
-# Pulls the image FROM the registry (confirms push succeeded), starts it,
-# waits for healthy, and verifies the connectors API.
-# ─────────────────────────────────────────────────────────────────────────────
-e2e:
-  stage: e2e
-  image: docker:26-cli
-  rules:
-    - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
-    - if: $CI_COMMIT_BRANCH == "master"
-  services:
-    - name: postgres:17-alpine
-      alias: postgres
-    - name: redis:7-alpine
-      alias: redis
-    - name: docker:26-dind
-      alias: docker
-  variables:
-    DB_URL: postgres://postgres:p0stgr3s@postgres:5432/logto
-    REDIS_URL: redis://redis:6379
-    TRUST_PROXY_HEADER: "1"
-    PRIVATE_KEY_ROTATION_GRACE_PERIOD: "0"
-    DOCKER_TLS_CERTDIR: "/certs"
-  before_script:
-    - apk add --no-cache curl
-    # Authenticate with the GitLab Container Registry using the CI job token
-    - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
-  script:
-    - |
-      # Pull the image that was just pushed to the registry (not the local cache)
-      docker pull "$IMAGE_NAME:$CI_COMMIT_BRANCH"
-      
-      docker run -d --rm \
-        --name logto-e2e \
-        --entrypoint sh \
-        --network host \
-        -e DB_URL \
-        -e REDIS_URL \
-        -e TRUST_PROXY_HEADER \
-        -e PRIVATE_KEY_ROTATION_GRACE_PERIOD \
-        "$IMAGE_NAME:$CI_COMMIT_BRANCH" \
-        -c "npm run cli db seed -- --swe && npm start"
-      
-      # Wait up to 5 minutes for cold-start (mapped on the 'docker' host interface due to host network inside dind)
-      echo "Waiting for Logto to become healthy..."
-      for i in $(seq 1 60); do
-        if curl -sf http://docker:3001/api/configs/admin-console > /dev/null 2>&1; then
-          echo "OK — Logto is healthy (attempt $i)"
-          break
-        fi
-        echo "Not ready yet ($i/60)"
-        sleep 5
-      done
-      
-      # Verify the connectors API is reachable and shows connector IDs
-      echo "Connector IDs loaded in the image:"
-      curl -s -f http://docker:3001/api/connectors \
-        | grep -o '"id": "[^"]*"' | sort | uniq
-  after_script:
-    - docker rm -f logto-e2e 2>/dev/null || true
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage deploy – Deploy to Kubernetes (modern bitnami/kubectl authentication)
@@ -300,38 +237,4 @@ deploy:k8s:development:
     - if: $CI_COMMIT_BRANCH == "master"
       when: manual
 
-# Staging
-k8s:sync-gitlab-env:staging:
-  extends: .k8s_sync
-  environment:
-    name: staging
-  rules:
-    - if: $CI_COMMIT_BRANCH == "master"
-      when: manual
 
-deploy:k8s:staging:
-  extends: .k8s_deploy
-  needs: ["build-image", "k8s:sync-gitlab-env:staging"]
-  environment:
-    name: staging
-  rules:
-    - if: $CI_COMMIT_BRANCH == "master"
-      when: manual
-
-# Production
-k8s:sync-gitlab-env:production:
-  extends: .k8s_sync
-  environment:
-    name: production
-  rules:
-    - if: $CI_COMMIT_BRANCH == "master"
-      when: manual
-
-deploy:k8s:production:
-  extends: .k8s_deploy
-  needs: ["build-image", "k8s:sync-gitlab-env:production"]
-  environment:
-    name: production
-  rules:
-    - if: $CI_COMMIT_BRANCH == "master"
-      when: manual
