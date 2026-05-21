@@ -13,6 +13,11 @@
 #   build   → build+push   (docker buildx, push to registry)
 #   e2e     → smoke test   (pull from registry, curl health + connectors API)
 
+stages:
+  - .pre
+  - build
+  - e2e
+
 # Workflow: pipeline is created ONLY when triggered manually from the GitLab UI.
 # No pipeline is ever created automatically on push or merge event.
 workflow:
