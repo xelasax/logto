@@ -1,0 +1,40 @@
+# Logto Repository Agent Rules & Instructions
+
+You are an AI coding assistant working on the Logto monorepo project. To ensure correct procedures, maintain code quality, and operate with maximum performance and minimal token/credit overhead, you MUST strictly adhere to the instructions below.
+
+---
+
+## 1. Primary Instruction File
+- You **MUST** read [AGENTS.md](file:///Users/quame/Documents/products/oauth/logto/AGENTS.md) at the beginning of any development task.
+- All guidelines, branch naming conventions, PR requirements, changesets, and commit hook discipline detailed in `AGENTS.md` are non-negotiable.
+
+---
+
+## 2. Core Project Workflows
+- **Branch Naming**: Start branches with your GitHub username (normalized to lowercase kebab-case) followed by kebab-case words, with no `/` (e.g. `username-my-feature-branch`).
+- **Feature Flags & Changesets**:
+  - Prefer `isDevFeaturesEnabled` over changesets for unreleased features.
+  - Changesets and `isDevFeaturesEnabled` should never appear together for the same change.
+  - When adding changesets, run `pnpm changeset` from the root. Use the exact text format specified in `AGENTS.md`.
+- **Commit Hook Discipline**:
+  - Never bypass commit hooks (no `--no-verify`).
+  - If package outputs are stale/missing, run `pnpm prepack` before retrying.
+  - If a hook cannot be safely fixed, stop and report the blocker immediately.
+
+---
+
+## 3. High-Performance Token & Credit Optimizations (MANDATORY)
+To minimize token consumption and reduce billing/credit costs, apply the following strategies:
+
+### 3.1. Minimizing Context and Read Overhead
+- **Targeted Reading**: DO NOT read massive files (e.g., lockfiles, large build artifacts, huge source files) in their entirety. Only read specific lines or sections using line-numbered reads (e.g., `StartLine` / `EndLine`).
+- **Use Grep Search First**: Use precise pattern matching (`grep_search` with ripgrep) to locate files/lines rather than recursively scanning large directories or manually inspecting folders.
+- **Limit Directory Listings**: Do not call directory listings on heavy directories like `node_modules`, `dist`, `.git`, or the full project root unless absolutely necessary.
+
+### 3.2. Precise Editing (Avoiding Full File Overwrites)
+- **Use Targeted Edits**: Never overwrite entire large files to make localized edits. Always use precise, line-targeted replace tools (e.g. `replace_file_content` or `multi_replace_file_content`) to change only the exact lines required.
+- **Small Replacement Chunks**: Keep replacement blocks small and concise to minimize prompts and response token usage.
+
+### 3.3. Task and Command Efficiency
+- **Targeted Building**: Run builds or tests targeting specific packages first (e.g. `pnpm --filter <package-name> prepack`) rather than workspace-wide operations when resolving local packages.
+- **No Idle Polling/Looping**: When starting background tasks, never run continuous polling or looping commands (e.g. `sleep` loops or constant status checks). Rely on the system's event-driven completion updates or check status sparingly only after a reasonable expected duration.

@@ -109,40 +109,47 @@ build-image:
 # ─────────────────────────────────────────────────────────────────────────────
 e2e:
   stage: e2e
-  image: alpine:3.19
+  image: docker:26-cli
   rules:
     - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
     - if: $CI_COMMIT_BRANCH == "master"
   services:
-    - postgres:17-alpine
-    - redis:7-alpine
+    - name: postgres:17-alpine
+      alias: postgres
+    - name: redis:7-alpine
+      alias: redis
+    - name: docker:26-dind
+      alias: docker
   variables:
     DB_URL: postgres://postgres:p0stgr3s@postgres:5432/logto
     REDIS_URL: redis://redis:6379
     TRUST_PROXY_HEADER: "1"
     PRIVATE_KEY_ROTATION_GRACE_PERIOD: "0"
+    DOCKER_TLS_CERTDIR: "/certs"
   tags:
     - docker
   before_script:
     - apk add --no-cache curl
+    # Authenticate with the GitLab Container Registry using the CI job token
+    - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
   script:
     # Pull the image that was just pushed to the registry (not the local cache)
     - docker pull "$IMAGE_NAME:$CI_COMMIT_BRANCH"
     - |
       docker run -d --rm \
         --name logto-e2e \
+        --network host \
         -e DB_URL \
         -e REDIS_URL \
         -e TRUST_PROXY_HEADER \
         -e PRIVATE_KEY_ROTATION_GRACE_PERIOD \
-        -p "3001:3001" \
         "$IMAGE_NAME:$CI_COMMIT_BRANCH" \
         sh -c "npm run cli db seed -- --swe && npm start"
-    # Wait up to 5 minutes for cold-start
+    # Wait up to 5 minutes for cold-start (mapped on the 'docker' host interface due to host network inside dind)
     - |
       echo "Waiting for Logto to become healthy..."
       for i in $(seq 1 60); do
-        if curl -sf http://localhost:3001/api/configs/admin-console > /dev/null 2>&1; then
+        if curl -sf http://docker:3001/api/configs/admin-console > /dev/null 2>&1; then
           echo "OK — Logto is healthy (attempt $i)"
           break
         fi
@@ -152,7 +159,7 @@ e2e:
     # Verify the connectors API is reachable and shows connector IDs
     - |
       echo "Connector IDs loaded in the image:"
-      curl -s -f http://localhost:3001/api/connectors \
+      curl -s -f http://docker:3001/api/connectors \
         | grep -o '"id": "[^"]*"' | sort | uniq
   after_script:
     - docker rm -f logto-e2e 2>/dev/null || true
