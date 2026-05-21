@@ -1,10 +1,11 @@
 # GitLab CI/CD – custom-oauth-server
 #
-# Pipeline is triggered ONLY on push to the `custom-oauth-server` branch.
+# Pipeline is triggered on push to the `custom-oauth-server` or `master` branch.
 #
-# Published image:
-#   registry.gitlab.com/$CI_PROJECT_PATH/logto:custom-oauth-server
-#   registry.gitlab.com/$CI_PROJECT_PATH/logto:latest
+# Published images:
+#   registry.gitlab.com/$CI_PROJECT_PATH/logto:custom-oauth-server   (feature branch)
+#   registry.gitlab.com/$CI_PROJECT_PATH/logto:master                 (release / stable)
+#   registry.gitlab.com/$CI_PROJECT_PATH/logto:latest                (always the most recently published snapshot)
 #
 # Stages (run sequentially when triggered):
 #   .pre    → lint         (lint only the connector to avoid upstream failures)
@@ -43,9 +44,10 @@ lint:
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage build – Docker build, connector sanity check, and push to registry
 #
-# Runs on every push to custom-oauth-server.
-# Tags:  :custom-oauth-server  (immutable per-commit)
-#        :latest               (most recently published)
+# Runs on every push to custom-oauth-server or master.
+# Tags:  :custom-oauth-server  (feature – immutable per-commit)
+#        :master               (stable / release)
+#        :latest               (most recently published, from either branch)
 # ─────────────────────────────────────────────────────────────────────────────
 build-image:
   stage: build
@@ -57,6 +59,7 @@ build-image:
     DOCKER_TLS_CERTDIR: "/certs"
   rules:
     - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "master"
   tags:
     - docker
   before_script:
@@ -99,12 +102,14 @@ build-image:
 #
 # Pulls the image FROM the registry (confirms push succeeded), starts it,
 # waits for healthy, and verifies the connectors API.
+# Runs on custom-oauth-server and master.
 # ─────────────────────────────────────────────────────────────────────────────
 e2e:
   stage: e2e
   image: alpine:3.19
   rules:
     - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "master"
   services:
     - postgres:17-alpine
     - redis:7-alpine
