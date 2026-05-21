@@ -1,29 +1,40 @@
 # GitLab CI/CD – custom-oauth-server
-# Every job runs ONLY on the `custom-oauth-server` branch.
-# The Docker image is published to the GitLab Container Registry on every
-# successful push when ALL stages pass.
 #
-# Registry path:
-#   registry.gitlab.com/$CI_PROJECT_PATH/logto:custom-oauth-server
+# Pipeline is triggered MANUALLY from the GitLab UI.
+# To run: Pipelines → Run pipeline → select `custom-oauth-server` or `master`
+#
+# Published images (GitLab Container Registry):
+#   <group>/<project>/logto:custom-oauth-server   (feature branch)
+#   <group>/<project>/logto:master                (stable / release)
+#   <group>/<project>/logto:latest               (most recently published)
+#
+# Stages:
+#   .pre    → lint         (lint only the connector – avoids upstream failures)
+#   build   → build+push   (docker buildx, push to registry)
+#   e2e     → smoke test   (pull from registry, curl health + connectors API)
+
+# Workflow: pipeline is created ONLY when triggered manually from the GitLab UI.
+# No pipeline is ever created automatically on push or merge event.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
 
 variables:
-  REGISTRY: registry.gitlab.com
-  # Enable BuildKit so Dockerfile layer-cache mounts work in dind
+  # $CI_REGISTRY_IMAGE is always correct regardless of GitLab host
+  IMAGE_NAME: $CI_REGISTRY_IMAGE/logto
+  # Enable BuildKit so Dockerfile RUN --mount works correctly in dind
   DOCKER_BUILDKIT: "1"
-  IMAGE_NAME: $CI_REGISTRY/$CI_PROJECT_PATH/logto
+  PIP_NO_CACHE_DIR: "1"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 1 – Validate (lint only)
-# Runs on push to custom-oauth-server. Type-check is intentionally excluded
-# because workspace packages (@logto/connector-kit, @logto/language-kit) must
-# be built before their types can be resolved; the Docker build stage already
-# runs a full `pnpm -r build` which is the authoritative check.
+# Stage .pre – Lint (only the connector; full monorepo lint is not guarded)
 # ─────────────────────────────────────────────────────────────────────────────
 lint:
   stage: .pre
   image: node:22-alpine
   rules:
     - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "master"
   before_script:
     - npm add --location=global pnpm@^10.0.0
     - apk add --no-cache python3 make g++ bash
@@ -34,58 +45,74 @@ lint:
       - .pnpm-store/
   script:
     - pnpm i --frozen-lockfile
-    # Lint only this connector (avoids unrelated upstream failures)
-    - pnpm --filter @logto/connector-local-sms-service lint
+    # Scope to the connector we own so unrelated packages cannot fail the pipeline
+    - pnpm --filter "@logto/connector-local-sms-service" lint
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 2 – Build Docker image and push to registry
-# Triggers on every push to custom-oauth-server.
-# The image is tagged :custom-oauth-server and :latest.
+# Stage build – Docker build, sanity check, and push to registry
+#
+# Triggered manually on custom-oauth-server or master.
+# Tags: :custom-oauth-server / :master / :latest
 # ─────────────────────────────────────────────────────────────────────────────
-.build-and-push:
+build-image:
   stage: build
   image: docker:26-cli
-  rules:
-    - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
   services:
     - docker:26-dind
   variables:
     DOCKER_DRIVER: overlay2
     DOCKER_TLS_CERTDIR: "/certs"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "master"
+  tags:
+    - docker
   before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    # Authenticate with the GitLab Container Registry using the CI job token
+    - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
   script:
-    - TAG="$CI_COMMIT_BRANCH"
-    - echo "Building image: $IMAGE_NAME:$TAG"
+    # Select tag: use the git tag if this pipeline is triggered by a tag,
+    # otherwise use the branch name as a human-readable tag.
     - |
-      docker build --pull \
+      if [ "$CI_COMMIT_TAG" ]; then
+        TAG="$CI_COMMIT_TAG"
+      else
+        TAG="$CI_COMMIT_BRANCH"
+      fi
+    - echo "Building image: $IMAGE_NAME:$TAG"
+    # Use buildx so --mount cache directives in the Dockerfile work in dind
+    - |
+      docker buildx create --use --name logto-builder 2>/dev/null || true
+    - |
+      docker buildx build --pull \
+        --progress=plain \
         --build-arg additional_connector_args="--all" \
         -t "$IMAGE_NAME:$TAG" \
         -t "$IMAGE_NAME:latest" \
+        --load \
         .
-    # Sanity check – confirm the local-sms-service connector is in the image
+    # Sanity check: connector binary must be present in the image
     - |
       docker run --rm "$IMAGE_NAME:$TAG" \
         ls /etc/logto/packages/connectors/connector-local-sms-service/lib/ \
         | grep index.js
-    - echo "Pushing $IMAGE_NAME:$TAG …"
+    # Push both tags to the GitLab Container Registry
     - docker push "$IMAGE_NAME:$TAG"
-    - echo "Pushing $IMAGE_NAME:latest …"
     - docker push "$IMAGE_NAME:latest"
-    - echo "Image published: $IMAGE_NAME:$TAG"
-  tags:
-    - docker
+    - echo "Published → $IMAGE_NAME:$TAG"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 3 – E2E smoke test
-# Starts the freshly published image and curls the health endpoint.
-# Only runs after the image has been pushed successfully.
+# Stage e2e – Smoke test
+#
+# Pulls the image FROM the registry (confirms push succeeded), starts it,
+# waits for healthy, and verifies the connectors API.
 # ─────────────────────────────────────────────────────────────────────────────
-.e2e:
+e2e:
   stage: e2e
   image: alpine:3.19
   rules:
     - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "master"
   services:
     - postgres:17-alpine
     - redis:7-alpine
@@ -94,10 +121,13 @@ lint:
     REDIS_URL: redis://redis:6379
     TRUST_PROXY_HEADER: "1"
     PRIVATE_KEY_ROTATION_GRACE_PERIOD: "0"
+  tags:
+    - docker
   before_script:
     - apk add --no-cache curl
   script:
-    - docker pull "$IMAGE_NAME:$CI_COMMIT_BRANCH" || true
+    # Pull the image that was just pushed to the registry (not the local cache)
+    - docker pull "$IMAGE_NAME:$CI_COMMIT_BRANCH"
     - |
       docker run -d --rm \
         --name logto-e2e \
@@ -108,18 +138,21 @@ lint:
         -p "3001:3001" \
         "$IMAGE_NAME:$CI_COMMIT_BRANCH" \
         sh -c "npm run cli db seed -- --swe && npm start"
+    # Wait up to 5 minutes for cold-start
     - |
       echo "Waiting for Logto to become healthy..."
       for i in $(seq 1 60); do
         if curl -sf http://localhost:3001/api/configs/admin-console > /dev/null 2>&1; then
-          echo "Logto is healthy!"
+          echo "OK — Logto is healthy (attempt $i)"
           break
         fi
-        echo "Waiting... ($i/60)"
+        echo "Not ready yet ($i/60)"
         sleep 5
       done
-    - curl -sf -H "Authorization: Bearer test" http://localhost:3001/api/connectors | head -c 500
+    # Verify the connectors API is reachable and shows connector IDs
+    - |
+      echo "Connector IDs loaded in the image:"
+      curl -s -f http://localhost:3001/api/connectors \
+        | grep -o '"id": "[^"]*"' | sort | uniq
   after_script:
     - docker rm -f logto-e2e 2>/dev/null || true
-  tags:
-    - docker
