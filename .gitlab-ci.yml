@@ -1,16 +1,25 @@
 # GitLab CI/CD – custom-oauth-server
 #
-# Pipeline is triggered on push to the `custom-oauth-server` or `master` branch.
+# Pipeline is triggered MANUALLY from the GitLab UI.
+# To run: Pipelines → Run pipeline → select `custom-oauth-server` or `master`
 #
 # Published images:
 #   registry.gitlab.com/$CI_PROJECT_PATH/logto:custom-oauth-server   (feature branch)
 #   registry.gitlab.com/$CI_PROJECT_PATH/logto:master                 (release / stable)
-#   registry.gitlab.com/$CI_PROJECT_PATH/logto:latest                (always the most recently published snapshot)
+#   registry.gitlab.com/$CI_PROJECT_PATH/logto:latest                (most recently published snapshot)
 #
 # Stages (run sequentially when triggered):
 #   .pre    → lint         (lint only the connector to avoid upstream failures)
 #   build   → build+push   (docker buildx, push to GitLab Container Registry)
 #   e2e     → smoke test   (pull from registry, start, curl health + connectors API)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Workflow: pipeline only created when triggered manually from the GitLab UI.
+# No pipeline is ever created automatically on push or merge.
+# ─────────────────────────────────────────────────────────────────────────────
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
 
 variables:
   # $CI_REGISTRY_IMAGE is always correct regardless of GitLab host
@@ -28,6 +37,7 @@ lint:
   image: node:22-alpine
   rules:
     - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "master"
   before_script:
     - npm add --location=global pnpm@^10.0.0
     - apk add --no-cache python3 make g++ bash
@@ -44,7 +54,7 @@ lint:
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage build – Docker build, connector sanity check, and push to registry
 #
-# Runs on every push to custom-oauth-server or master.
+# Runs when the pipeline is triggered manually on custom-oauth-server or master.
 # Tags:  :custom-oauth-server  (feature – immutable per-commit)
 #        :master               (stable / release)
 #        :latest               (most recently published, from either branch)
