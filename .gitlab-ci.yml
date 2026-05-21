@@ -71,19 +71,18 @@ build-image:
     # Authenticate with the GitLab Container Registry using the CI job token
     - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
   script:
-    # Select tag: use the git tag if this pipeline is triggered by a tag,
-    # otherwise use the branch name as a human-readable tag.
     - |
       if [ "$CI_COMMIT_TAG" ]; then
         TAG="$CI_COMMIT_TAG"
       else
         TAG="$CI_COMMIT_BRANCH"
       fi
-    - echo "Building image: $IMAGE_NAME:$TAG"
-    # Use buildx so --mount cache directives in the Dockerfile work in dind
-    - |
+      echo "Building image: $IMAGE_NAME:$TAG"
+      
+      # Use buildx so --mount cache directives in the Dockerfile work in dind
       docker buildx create --use --name logto-builder 2>/dev/null || true
-    - |
+      
+      # Build -> load into local daemon -> verify -> push
       docker buildx build --pull \
         --progress=plain \
         --build-arg additional_connector_args="--all" \
@@ -91,15 +90,16 @@ build-image:
         -t "$IMAGE_NAME:latest" \
         --load \
         .
-    # Sanity check: connector binary must be present in the image
-    - |
+      
+      # Sanity check: connector binary must be present in the image
       docker run --rm "$IMAGE_NAME:$TAG" \
         ls /etc/logto/packages/connectors/connector-local-sms-service/lib/ \
         | grep index.js
-    # Push both tags to the GitLab Container Registry
-    - docker push "$IMAGE_NAME:$TAG"
-    - docker push "$IMAGE_NAME:latest"
-    - echo "Published → $IMAGE_NAME:$TAG"
+      
+      # Push both tags to the GitLab Container Registry
+      docker push "$IMAGE_NAME:$TAG"
+      docker push "$IMAGE_NAME:latest"
+      echo "Published → $IMAGE_NAME:$TAG"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage e2e – Smoke test
@@ -133,9 +133,10 @@ e2e:
     # Authenticate with the GitLab Container Registry using the CI job token
     - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
   script:
-    # Pull the image that was just pushed to the registry (not the local cache)
-    - docker pull "$IMAGE_NAME:$CI_COMMIT_BRANCH"
     - |
+      # Pull the image that was just pushed to the registry (not the local cache)
+      docker pull "$IMAGE_NAME:$CI_COMMIT_BRANCH"
+      
       docker run -d --rm \
         --name logto-e2e \
         --network host \
@@ -145,8 +146,8 @@ e2e:
         -e PRIVATE_KEY_ROTATION_GRACE_PERIOD \
         "$IMAGE_NAME:$CI_COMMIT_BRANCH" \
         sh -c "npm run cli db seed -- --swe && npm start"
-    # Wait up to 5 minutes for cold-start (mapped on the 'docker' host interface due to host network inside dind)
-    - |
+      
+      # Wait up to 5 minutes for cold-start (mapped on the 'docker' host interface due to host network inside dind)
       echo "Waiting for Logto to become healthy..."
       for i in $(seq 1 60); do
         if curl -sf http://docker:3001/api/configs/admin-console > /dev/null 2>&1; then
@@ -156,8 +157,8 @@ e2e:
         echo "Not ready yet ($i/60)"
         sleep 5
       done
-    # Verify the connectors API is reachable and shows connector IDs
-    - |
+      
+      # Verify the connectors API is reachable and shows connector IDs
       echo "Connector IDs loaded in the image:"
       curl -s -f http://docker:3001/api/connectors \
         | grep -o '"id": "[^"]*"' | sort | uniq
