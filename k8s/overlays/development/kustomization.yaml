@@ -9,3 +9,25 @@ configMapGenerator:
     behavior: merge
     envs:
       - configmap.properties
+
+patches:
+  - target:
+      kind: Deployment
+      name: logto
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: logto
+      spec:
+        template:
+          spec:
+            hostAliases:
+              - ip: "10.200.10.4"
+                hostnames:
+                  - "auth.ghtickle.dev"
+                  - "admin-auth.ghtickle.dev"
+              - ip: "10.200.10.5"
+                hostnames:
+                  - "auth.ghtickle.dev"
+                  - "admin-auth.ghtickle.dev"
