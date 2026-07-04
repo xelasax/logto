@@ -1,10 +1,10 @@
-# GitLab CI/CD – custom-oauth-server
+# GitLab CI/CD – development
 #
 # Pipeline is triggered MANUALLY from the GitLab UI.
-# To run: Pipelines → Run pipeline → select `custom-oauth-server` or `master`
+# To run: Pipelines → Run pipeline → select `development` or `master`
 #
 # Published images (GitLab Container Registry):
-#   <group>/<project>/logto:custom-oauth-server   (feature branch)
+#   <group>/<project>/logto:development   (feature branch)
 #   <group>/<project>/logto:master                (stable / release)
 #   <group>/<project>/logto:latest               (most recently published)
 #
@@ -23,7 +23,7 @@ workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_COMMIT_BRANCH == "master"
-    - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "development"
 
 variables:
   # $CI_REGISTRY_IMAGE is always correct regardless of GitLab host
@@ -39,7 +39,7 @@ lint:
   stage: .pre
   image: node:22-alpine
   rules:
-    - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "development"
     - if: $CI_COMMIT_BRANCH == "master"
   before_script:
     - npm add --location=global pnpm@^10.0.0
@@ -59,8 +59,8 @@ lint:
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage build – Docker build, sanity check, and push to registry
 #
-# Triggered manually on custom-oauth-server or master.
-# Tags: :custom-oauth-server / :master / :latest
+# Triggered manually on development or master.
+# Tags: :development / :master / :latest
 # ─────────────────────────────────────────────────────────────────────────────
 build-image:
   stage: build
@@ -71,7 +71,7 @@ build-image:
     DOCKER_DRIVER: overlay2
     DOCKER_TLS_CERTDIR: "/certs"
   rules:
-    - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "development"
     - if: $CI_COMMIT_BRANCH == "master"
   before_script:
     # Authenticate with the GitLab Container Registry using the CI job token
@@ -84,10 +84,10 @@ build-image:
         TAG="$CI_COMMIT_BRANCH"
       fi
       echo "Building image: $IMAGE_NAME:$TAG"
-      
+
       # Use buildx so --mount cache directives in the Dockerfile work in dind
       docker buildx create --use --name logto-builder 2>/dev/null || true
-      
+
       # Build -> load into local daemon -> verify -> push
       docker buildx build --pull \
         --progress=plain \
@@ -96,17 +96,16 @@ build-image:
         -t "$IMAGE_NAME:latest" \
         --load \
         .
-      
+
       # Sanity check: connector binary must be present in the image
       docker run --rm --entrypoint sh "$IMAGE_NAME:$TAG" \
         -c "ls /etc/logto/packages/connectors/connector-local-sms-service/lib/" \
         | grep index.js
-      
+
       # Push both tags to the GitLab Container Registry
       docker push "$IMAGE_NAME:$TAG"
       docker push "$IMAGE_NAME:latest"
       echo "Published → $IMAGE_NAME:$TAG"
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage deploy – Deploy to Kubernetes (modern bitnami/kubectl authentication)
@@ -122,10 +121,13 @@ build-image:
       set -e
       export KUBECONFIG="${CI_PROJECT_DIR}/.kubeconfig"
       export DEPLOY_OVERLAY=$CI_ENVIRONMENT_NAME
-      export K8S_NAMESPACE=$CI_ENVIRONMENT_NAME
+      export K8S_NAMESPACE=auth
 
       case "$DEPLOY_OVERLAY" in
-        development|staging|production) ;;
+        development) APP_PREFIX="dev-" ;;
+        staging) APP_PREFIX="staging-" ;;
+        production) APP_PREFIX="prod-" ;;
+        main) APP_PREFIX="main-" ;;
         *) echo "Invalid environment"; exit 1 ;;
       esac
 
@@ -171,19 +173,19 @@ build-image:
 
       env | grep -E "$APP_VARS_REGEX" > "$ENVFILE" || true
 
-      kubectl create secret generic logto-secrets \
+      kubectl create secret generic ${APP_PREFIX}logto-secrets \
         --from-env-file="$ENVFILE" \
-        -n "$CI_ENVIRONMENT_NAME" \
+        -n auth \
         --dry-run=client -o yaml | kubectl apply -f -
 
-      echo "Synced all matching environment variables to secret/logto-secrets in $CI_ENVIRONMENT_NAME"
+      echo "Synced all matching environment variables to secret/${APP_PREFIX}logto-secrets in auth namespace"
 
       if [ -n "$DEPLOY_TOKEN_USER" ]; then
         kubectl create secret docker-registry gitlab-registry \
           --docker-server="$CI_REGISTRY" \
           --docker-username="$DEPLOY_TOKEN_USER" \
           --docker-password="$DEPLOY_TOKEN_PASSWORD" \
-          -n "$CI_ENVIRONMENT_NAME" \
+          -n auth \
           --dry-run=client -o yaml | kubectl apply -f -
       fi
 
@@ -209,10 +211,14 @@ build-image:
         | sed "s|registry.invalid/logto:ci-placeholder|${APPLICATION_IMAGE}|g" \
         | sed "s|PLACEHOLDER_LOGTO_HOST|${CLEAN_LOGTO_HOST}|g" \
         | sed "s|PLACEHOLDER_LOGTO_ADMIN_HOST|${CLEAN_LOGTO_ADMIN_HOST}|g" \
+        | sed "s|PLACEHOLDER_IP_1|${HOST_ALIAS_IP_1}|g" \
+        | sed "s|PLACEHOLDER_IP_2|${HOST_ALIAS_IP_2}|g" \
+        | sed "s|PLACEHOLDER_AUTH_DOMAIN|${HOST_ALIAS_AUTH_DOMAIN}|g" \
+        | sed "s|PLACEHOLDER_ADMIN_DOMAIN|${HOST_ALIAS_ADMIN_DOMAIN}|g" \
         | sed -E "s/\"?REDEPLOY_TRIGGER_PLACEHOLDER\"?/\"${CI_PIPELINE_ID}\"/g" \
         | kubectl apply -f -
 
-      kubectl rollout status deployment/logto -n "$CI_ENVIRONMENT_NAME" --timeout=300s
+      kubectl rollout status deployment/${APP_PREFIX}logto -n auth --timeout=300s
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Environment deployment definitions (triggered manually via UI/push rules)
@@ -224,7 +230,7 @@ k8s:sync-gitlab-env:development:
   environment:
     name: development
   rules:
-    - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "development"
       when: manual
     - if: $CI_COMMIT_BRANCH == "master"
       when: manual
@@ -235,9 +241,29 @@ deploy:k8s:development:
   environment:
     name: development
   rules:
-    - if: $CI_COMMIT_BRANCH == "custom-oauth-server"
+    - if: $CI_COMMIT_BRANCH == "development"
       when: manual
     - if: $CI_COMMIT_BRANCH == "master"
       when: manual
 
+# Main
+k8s:sync-gitlab-env:main:
+  extends: .k8s_sync
+  environment:
+    name: main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
 
+deploy:k8s:main:
+  extends: .k8s_deploy
+  needs: ["build-image", "k8s:sync-gitlab-env:main"]
+  environment:
+    name: main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: manual
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual

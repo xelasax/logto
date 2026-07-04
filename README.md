@@ -108,6 +108,19 @@ If you find Logto helpful, here's how you can support us:
 - 🙋 [Open an issue](https://github.com/logto-io/logto/issues/new) to report bugs or suggest features.
 - 💻 [Contribute to Logto](https://github.com/logto-io/logto/blob/master/.github/CONTRIBUTING.md) - we'd love your help! Check out [Logto awesome](https://github.com/logto-io/logto/blob/master/AWESOME.md) of community-contributed resources.
 
+## GitLab CI Environment Variables
+
+To correctly deploy Logto using the GitLab CI pipeline across the `development` and `main` branches, the following environment variables must be configured in the **GitLab CI/CD Settings (Settings > CI/CD > Variables)**. Ensure these variables are added for their respective environments and are marked as **Masked** (and/or **Protected**) as they contain sensitive deployment secrets.
+
+### Required Variables for `development` & `main` Environments
+- `HOST_ALIAS_IP_1`: The first IP address for the host alias (e.g., `10.200.10.4`)
+- `HOST_ALIAS_IP_2`: The second IP address for the host alias (e.g., `10.200.10.5`)
+- `HOST_ALIAS_AUTH_DOMAIN`: The domain for the auth endpoint (e.g., `auth.ghtickle.dev` or `auth.xdatechnologies.com`)
+- `HOST_ALIAS_ADMIN_DOMAIN`: The domain for the admin auth endpoint (e.g., `admin-auth.ghtickle.dev` or `admin-auth.xdainternal.cc`)
+- `DB_URL` (or your specific `DB_*` connection string variables): The database connection URL for the respective environment.
+
+Any variables matching `^(LOGTO_|DB_|REDIS_|TRUST_PROXY_|PRIVATE_KEY_|SECRET_VAULT_|STATUS_API_|CASE_SENSITIVE_|USER_DEFAULT_|DATABASE_|TENANT_POOL_|DEV_FEATURES_|INTEGRATION_TEST|NODE_ENV|CLOUD_ENDPOINT|PATH_BASED_MULTI_TENANCY|IS_CLOUD|MULTIPLE_CUSTOM_DOMAINS_ENABLED|HTTPS_|POSTHOG_)` will be automatically captured by the CI and injected as Kubernetes secrets.
+
 ## Licensing
 
 [MPL-2.0](LICENSE).
