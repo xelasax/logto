@@ -234,6 +234,7 @@ build-image:
         | sed "s|PLACEHOLDER_AUTH_DOMAIN|${FINAL_AUTH}|g" \
         | sed "s|PLACEHOLDER_ADMIN_DOMAIN|${FINAL_ADMIN}|g" \
         | sed -E "s/\"?REDEPLOY_TRIGGER_PLACEHOLDER\"?/\"${CI_PIPELINE_ID}\"/g" \
+        | sed "s|name: logto-secrets|name: ${APP_PREFIX}logto-secrets|g" \
         | kubectl apply -f -
 
       kubectl rollout status deployment/${APP_PREFIX}logto -n auth --timeout=300s
