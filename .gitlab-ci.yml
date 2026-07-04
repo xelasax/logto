@@ -92,7 +92,6 @@ build-image:
       # Build -> load into local daemon -> verify -> push
       docker buildx build --pull \
         --progress=plain \
-        --build-arg additional_connector_args="--cloud" \
         -t "$IMAGE_NAME:$TAG" \
         -t "$IMAGE_NAME:latest" \
         --load \
@@ -100,7 +99,7 @@ build-image:
 
       # Sanity check: connector binary must be present in the image
       docker run --rm --entrypoint sh "$IMAGE_NAME:$TAG" \
-        -c "ls /etc/logto/packages/connectors/connector-local-sms-service/lib/" \
+        -c "ls /etc/logto/packages/core/connectors/connector-local-sms-service/lib/" \
         | grep index.js
 
       # Push both tags to the GitLab Container Registry
@@ -174,6 +173,8 @@ build-image:
 
       env | grep -E "$APP_VARS_REGEX" > "$ENVFILE" || true
 
+      kubectl create namespace auth --dry-run=client -o yaml | kubectl apply -f -
+
       kubectl create secret generic ${APP_PREFIX}logto-secrets \
         --from-env-file="$ENVFILE" \
         -n auth \
@@ -181,14 +182,12 @@ build-image:
 
       echo "Synced all matching environment variables to secret/${APP_PREFIX}logto-secrets in auth namespace"
 
-      if [ -n "$DEPLOY_TOKEN_USER" ]; then
-        kubectl create secret docker-registry gitlab-registry \
-          --docker-server="$CI_REGISTRY" \
-          --docker-username="$DEPLOY_TOKEN_USER" \
-          --docker-password="$DEPLOY_TOKEN_PASSWORD" \
-          -n auth \
-          --dry-run=client -o yaml | kubectl apply -f -
-      fi
+      kubectl create secret docker-registry gitlab-registry \
+        --docker-server="$CI_REGISTRY" \
+        --docker-username="${DEPLOY_TOKEN_USER:-$CI_REGISTRY_USER}" \
+        --docker-password="${DEPLOY_TOKEN_PASSWORD:-$CI_REGISTRY_PASSWORD}" \
+        -n auth \
+        --dry-run=client -o yaml | kubectl apply -f -
 
 # Deploy job template
 .k8s_deploy:
@@ -207,19 +206,44 @@ build-image:
       CLEAN_LOGTO_HOST=$(echo "${LOGTO_HOST:-${ENDPOINT:-logto.ghtickle.dev}}" | sed -E 's|^https?://||')
       CLEAN_LOGTO_ADMIN_HOST=$(echo "${LOGTO_ADMIN_HOST:-${ADMIN_ENDPOINT:-admin.logto.ghtickle.dev}}" | sed -E 's|^https?://||')
 
+      if [ "$CI_ENVIRONMENT_NAME" = "main" ]; then
+        DEFAULT_IP_1="10.200.10.4"
+        DEFAULT_IP_2="10.200.10.5"
+        DEFAULT_AUTH="auth.xdatechnologies.com"
+        DEFAULT_ADMIN="admin-auth.xdainternal.cc"
+      else
+        DEFAULT_IP_1="10.200.10.4"
+        DEFAULT_IP_2="10.200.10.5"
+        DEFAULT_AUTH="auth.ghtickle.dev"
+        DEFAULT_ADMIN="admin-auth.ghtickle.dev"
+      fi
+
+      FINAL_IP_1="${HOST_ALIAS_IP_1:-$DEFAULT_IP_1}"
+      FINAL_IP_2="${HOST_ALIAS_IP_2:-$DEFAULT_IP_2}"
+      FINAL_AUTH="${HOST_ALIAS_AUTH_DOMAIN:-$DEFAULT_AUTH}"
+      FINAL_ADMIN="${HOST_ALIAS_ADMIN_DOMAIN:-$DEFAULT_ADMIN}"
+
       kubectl apply -f "k8s/overlays/${CI_ENVIRONMENT_NAME}/namespace.yaml"
       kubectl kustomize "k8s/overlays/${CI_ENVIRONMENT_NAME}" \
         | sed "s|registry.invalid/logto:ci-placeholder|${APPLICATION_IMAGE}|g" \
         | sed "s|PLACEHOLDER_LOGTO_HOST|${CLEAN_LOGTO_HOST}|g" \
         | sed "s|PLACEHOLDER_LOGTO_ADMIN_HOST|${CLEAN_LOGTO_ADMIN_HOST}|g" \
-        | sed "s|PLACEHOLDER_IP_1|${HOST_ALIAS_IP_1}|g" \
-        | sed "s|PLACEHOLDER_IP_2|${HOST_ALIAS_IP_2}|g" \
-        | sed "s|PLACEHOLDER_AUTH_DOMAIN|${HOST_ALIAS_AUTH_DOMAIN}|g" \
-        | sed "s|PLACEHOLDER_ADMIN_DOMAIN|${HOST_ALIAS_ADMIN_DOMAIN}|g" \
+        | sed "s|PLACEHOLDER_IP_1|${FINAL_IP_1}|g" \
+        | sed "s|PLACEHOLDER_IP_2|${FINAL_IP_2}|g" \
+        | sed "s|PLACEHOLDER_AUTH_DOMAIN|${FINAL_AUTH}|g" \
+        | sed "s|PLACEHOLDER_ADMIN_DOMAIN|${FINAL_ADMIN}|g" \
         | sed -E "s/\"?REDEPLOY_TRIGGER_PLACEHOLDER\"?/\"${CI_PIPELINE_ID}\"/g" \
+        | sed "s|name: logto-secrets|name: ${APP_PREFIX}logto-secrets|g" \
         | kubectl apply -f -
 
-      kubectl rollout status deployment/${APP_PREFIX}logto -n auth --timeout=300s
+      if ! kubectl rollout status deployment/${APP_PREFIX}logto -n auth --timeout=120s; then
+        echo "Rollout timed out. Fetching pod status and logs for debugging:"
+        kubectl get pods -n auth -l app.kubernetes.io/name=logto
+        kubectl describe pods -n auth -l app.kubernetes.io/name=logto
+        kubectl logs -n auth -l app.kubernetes.io/name=logto -c logto-db-migration --tail=50 || true
+        kubectl logs -n auth -l app.kubernetes.io/name=logto -c logto --tail=50 || true
+        exit 1
+      fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Environment deployment definitions (triggered manually via UI/push rules)
