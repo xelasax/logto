@@ -1,32 +1,32 @@
-# This compose file is for demonstration only, do not use in prod.
+version: '3.8'
+
 services:
-  app:
-    depends_on:
-      postgres:
-        condition: service_healthy
-    image: svhd/logto:${TAG-latest}
-    entrypoint: ["sh", "-c", "npm run cli db seed -- --swe && npm start"]
-    ports:
-      - 3001:3001
-      - 3002:3002
-    environment:
-      - TRUST_PROXY_HEADER=1
-      - DB_URL=postgres://postgres:p0stgr3s@postgres:5432/logto
-      # Optional default grace period, in seconds, for OIDC private key rotation when the API
-      # request omits `rotationGracePeriod`.
-      - PRIVATE_KEY_ROTATION_GRACE_PERIOD
-      # Mandatory for GitPod to map host env to the container, thus GitPod can dynamically configure the public URL of Logto;
-      # Or, you can leverage it for local testing.
-      - ENDPOINT
-      - ADMIN_ENDPOINT
   postgres:
     image: postgres:17-alpine
-    user: postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: p0stgr3s
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - POSTGRES_USER=logto
+      - POSTGRES_PASSWORD=logto
+      - POSTGRES_DB=logto
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  logto:
+    image: logto-custom:latest
+    depends_on:
+      - postgres
+    environment:
+      - DB_URL=postgres://logto:logto@postgres:5432/logto
+      - TRUST_PROXY_HEADER=1
+      - ENDPOINT=http://localhost:3001
+      - ADMIN_ENDPOINT=http://localhost:3002
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+    # The Logto image uses ENTRYPOINT ["npm", "run"], so we override it to run a shell command
+    entrypoint: /bin/sh
+    command: -c "npm run cli db seed -- --swe && npm run start"
+
+volumes:
+  postgres_data:
