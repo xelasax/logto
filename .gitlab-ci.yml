@@ -236,7 +236,14 @@ build-image:
         | sed "s|name: logto-secrets|name: ${APP_PREFIX}logto-secrets|g" \
         | kubectl apply -f -
 
-      kubectl rollout status deployment/${APP_PREFIX}logto -n auth --timeout=300s
+      if ! kubectl rollout status deployment/${APP_PREFIX}logto -n auth --timeout=120s; then
+        echo "Rollout timed out. Fetching pod status and logs for debugging:"
+        kubectl get pods -n auth -l app.kubernetes.io/name=logto
+        kubectl describe pods -n auth -l app.kubernetes.io/name=logto
+        kubectl logs -n auth -l app.kubernetes.io/name=logto -c logto-db-migration --tail=50 || true
+        kubectl logs -n auth -l app.kubernetes.io/name=logto -c logto --tail=50 || true
+        exit 1
+      fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Environment deployment definitions (triggered manually via UI/push rules)
