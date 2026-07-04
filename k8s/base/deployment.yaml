@@ -21,7 +21,26 @@ spec:
       initContainers:
         - name: logto-db-migration
           image: registry.invalid/logto:ci-placeholder
-          command: ["sh", "-c", "npm run cli db seed && npm run cli db alteration deploy"]
+          command:
+            - "sh"
+            - "-c"
+            - >
+              node -e "
+              const { Client } = require('pg');
+              const client = new Client({ connectionString: process.env.DB_URL });
+              client.connect().then(async () => {
+                console.log('Cleaning up old roles...');
+                const res = await client.query(\"SELECT rolname FROM pg_roles WHERE rolname LIKE 'logto_tenant_%'\");
+                for (let row of res.rows) {
+                  try {
+                    await client.query('DROP OWNED BY \"' + row.rolname + '\" CASCADE');
+                    await client.query('DROP ROLE \"' + row.rolname + '\"');
+                    console.log('Dropped ' + row.rolname);
+                  } catch (e) { console.error('Failed to drop ' + row.rolname, e.message); }
+                }
+                process.exit(0);
+              }).catch(e => { console.error(e); process.exit(0); });
+              " && npm run cli db seed && npm run cli db alteration deploy
           envFrom:
             - configMapRef:
                 name: logto-config
