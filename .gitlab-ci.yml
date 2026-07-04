@@ -92,7 +92,6 @@ build-image:
       # Build -> load into local daemon -> verify -> push
       docker buildx build --pull \
         --progress=plain \
-        --build-arg additional_connector_args="--cloud" \
         -t "$IMAGE_NAME:$TAG" \
         -t "$IMAGE_NAME:latest" \
         --load \
