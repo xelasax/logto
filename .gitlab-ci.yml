@@ -99,7 +99,7 @@ build-image:
 
       # Sanity check: connector binary must be present in the image
       docker run --rm --entrypoint sh "$IMAGE_NAME:$TAG" \
-        -c "ls /etc/logto/packages/connectors/connector-local-sms-service/lib/" \
+        -c "ls /etc/logto/packages/core/connectors/connector-local-sms-service/lib/" \
         | grep index.js
 
       # Push both tags to the GitLab Container Registry
