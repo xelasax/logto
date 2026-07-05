@@ -23,6 +23,7 @@ workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "development"
 
 variables:
@@ -41,6 +42,7 @@ lint:
   rules:
     - if: $CI_COMMIT_BRANCH == "development"
     - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "main"
   before_script:
     - npm add --location=global pnpm@^10.0.0
     - apk add --no-cache python3 make g++ bash
@@ -74,6 +76,7 @@ build-image:
   rules:
     - if: $CI_COMMIT_BRANCH == "development"
     - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "main"
   before_script:
     # Authenticate with the GitLab Container Registry using the CI job token
     - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
