@@ -260,8 +260,6 @@ k8s:sync-gitlab-env:development:
   rules:
     - if: $CI_COMMIT_BRANCH == "development"
       when: manual
-    - if: $CI_COMMIT_BRANCH == "master"
-      when: manual
 
 deploy:k8s:development:
   extends: .k8s_deploy
@@ -270,8 +268,6 @@ deploy:k8s:development:
     name: development
   rules:
     - if: $CI_COMMIT_BRANCH == "development"
-      when: manual
-    - if: $CI_COMMIT_BRANCH == "master"
       when: manual
 
 # Main
