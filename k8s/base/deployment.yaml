@@ -22,7 +22,7 @@ spec:
         - name: logto-db-migration
           image: registry.invalid/logto:ci-placeholder
           imagePullPolicy: Always
-          command: ["sh", "-c", "npm run cli db seed -- --swe && npm run cli db alteration deploy"]
+          command: ["sh", "-c", "npm run cli db seed -- --swe && npm run cli db alteration deploy latest"]
           envFrom:
             - configMapRef:
                 name: logto-config
