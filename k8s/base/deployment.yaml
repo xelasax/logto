@@ -21,6 +21,7 @@ spec:
       initContainers:
         - name: logto-db-migration
           image: registry.invalid/logto:ci-placeholder
+          imagePullPolicy: Always
           command: ["sh", "-c", "npm run cli db seed -- --swe && npm run cli db alteration deploy"]
           envFrom:
             - configMapRef:
@@ -31,7 +32,7 @@ spec:
       containers:
         - name: logto
           image: registry.invalid/logto:ci-placeholder
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - name: api
               containerPort: 3001
