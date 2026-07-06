@@ -124,13 +124,12 @@ build-image:
       set -e
       export KUBECONFIG="${CI_PROJECT_DIR}/.kubeconfig"
       export DEPLOY_OVERLAY=$CI_ENVIRONMENT_NAME
-      export K8S_NAMESPACE=auth
 
       case "$DEPLOY_OVERLAY" in
-        development) APP_PREFIX="dev-" ;;
-        staging) APP_PREFIX="staging-" ;;
-        production) APP_PREFIX="prod-" ;;
-        main) APP_PREFIX="main-" ;;
+        development) APP_PREFIX="dev-"; export K8S_NAMESPACE="dev-auth" ;;
+        staging) APP_PREFIX="staging-"; export K8S_NAMESPACE="staging-auth" ;;
+        production) APP_PREFIX="prod-"; export K8S_NAMESPACE="prod-auth" ;;
+        main) APP_PREFIX="main-"; export K8S_NAMESPACE="prod-auth" ;;
         *) echo "Invalid environment"; exit 1 ;;
       esac
 
@@ -176,20 +175,20 @@ build-image:
 
       env | grep -E "$APP_VARS_REGEX" > "$ENVFILE" || true
 
-      kubectl create namespace auth --dry-run=client -o yaml | kubectl apply -f -
+      kubectl create namespace "$K8S_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
       kubectl create secret generic ${APP_PREFIX}logto-secrets \
         --from-env-file="$ENVFILE" \
-        -n auth \
+        -n "$K8S_NAMESPACE" \
         --dry-run=client -o yaml | kubectl apply -f -
 
-      echo "Synced all matching environment variables to secret/${APP_PREFIX}logto-secrets in auth namespace"
+      echo "Synced all matching environment variables to secret/${APP_PREFIX}logto-secrets in $K8S_NAMESPACE namespace"
 
       kubectl create secret docker-registry gitlab-registry \
         --docker-server="$CI_REGISTRY" \
         --docker-username="${DEPLOY_TOKEN_USER:-$CI_REGISTRY_USER}" \
         --docker-password="${DEPLOY_TOKEN_PASSWORD:-$CI_REGISTRY_PASSWORD}" \
-        -n auth \
+        -n "$K8S_NAMESPACE" \
         --dry-run=client -o yaml | kubectl apply -f -
 
 # Deploy job template
@@ -239,12 +238,12 @@ build-image:
         | sed "s|name: logto-secrets|name: ${APP_PREFIX}logto-secrets|g" \
         | kubectl apply -f -
 
-      if ! kubectl rollout status deployment/${APP_PREFIX}logto -n auth --timeout=120s; then
+      if ! kubectl rollout status deployment/${APP_PREFIX}logto -n "$K8S_NAMESPACE" --timeout=120s; then
         echo "Rollout timed out. Fetching pod status and logs for debugging:"
-        kubectl get pods -n auth -l app.kubernetes.io/name=logto
-        kubectl describe pods -n auth -l app.kubernetes.io/name=logto
-        kubectl logs -n auth -l app.kubernetes.io/name=logto -c logto-db-migration --tail=50 || true
-        kubectl logs -n auth -l app.kubernetes.io/name=logto -c logto --tail=50 || true
+        kubectl get pods -n "$K8S_NAMESPACE" -l app.kubernetes.io/name=logto
+        kubectl describe pods -n "$K8S_NAMESPACE" -l app.kubernetes.io/name=logto
+        kubectl logs -n "$K8S_NAMESPACE" -l app.kubernetes.io/name=logto -c logto-db-migration --tail=50 || true
+        kubectl logs -n "$K8S_NAMESPACE" -l app.kubernetes.io/name=logto -c logto --tail=50 || true
         exit 1
       fi
 
