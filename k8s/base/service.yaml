@@ -4,6 +4,9 @@ metadata:
   name: logto
   labels:
     app.kubernetes.io/name: logto
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.secure: "true"
 spec:
   type: ClusterIP
   selector:
