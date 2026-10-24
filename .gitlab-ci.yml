@@ -71,13 +71,23 @@ build-image:
     - docker:26-dind
   variables:
     DOCKER_DRIVER: overlay2
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
+    # 🟢 REMOVED static DOCKER_HOST and DOCKER_TLS_CERTDIR from here
   rules:
     - if: $CI_COMMIT_BRANCH == "development"
     - if: $CI_COMMIT_BRANCH == "master"
     - if: $CI_COMMIT_BRANCH == "main"
   before_script:
+    # 🟢 DYNAMIC DETECTOR: Auto-detects local server socket vs cluster networks
+    - |
+      if [ -S /var/run/docker.sock ]; then
+        echo "Detected native server Docker socket. Bypassing network proxy overheads."
+        unset DOCKER_HOST
+        unset DOCKER_TLS_CERTDIR
+      else
+        echo "No native socket found. Routing through dynamic cluster DinD service."
+        export DOCKER_HOST="tcp://docker:2375"
+        export DOCKER_TLS_CERTDIR=""
+      fi
     # Authenticate with the GitLab Container Registry using the CI job token
     - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
   script:
